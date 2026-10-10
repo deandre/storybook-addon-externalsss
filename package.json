@@ -1,0 +1,65 @@
+{
+  "name": "storybook-addon-externalsss",
+  "version": "0.1.0",
+  "description": "Audit resource stability across a Storybook catalog",
+  "author": "DeAndre Harris",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/deandre/storybook-addon-externalsss"
+  },
+  "keywords": [
+    "storybook-addon",
+    "storybook",
+    "chromatic",
+    "resources"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24.12.0"
+  },
+  "exports": {
+    "./preview": "./dist/preview.js",
+    "./manager": "./dist/manager.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "prebuild": "node -e \"fs.rmSync('./dist', { recursive: true, force: true })\"",
+    "build": "tsup",
+    "prepack": "pnpm build",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "storybook": "storybook dev -p 6007",
+    "build-storybook": "storybook build",
+    "test:browser": "node scripts/browser-test.mjs"
+  },
+  "devDependencies": {
+    "@storybook/addon-docs": "10.6.1",
+    "@storybook/react-vite": "10.6.1",
+    "@types/node": "^24",
+    "@types/react": "^18.2.65",
+    "@types/react-dom": "^18.2.21",
+    "@vitejs/plugin-react": "^4.7.0",
+    "playwright": "1.59.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "storybook": "10.6.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.5",
+    "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0 || ^19.0.0",
+    "storybook": "^10.6.1"
+  },
+  "storybook": {
+    "displayName": "Externalsss"
+  },
+  "packageManager": "pnpm@10.22.0"
+}
