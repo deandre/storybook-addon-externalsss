@@ -65,3 +65,13 @@ pnpm test:browser
 `test:browser` expects the demo at `http://127.0.0.1:6100/`. Start it with `pnpm exec storybook dev -p 6100 --ci --no-open`, or set `EXTERNALSSS_STORYBOOK_URL` to another URL. `EXTERNALSSS_TEST_MODE=full` runs only the full-scan browser case, which is useful for a static build served under a subpath.
 
 See [the exercise prospectus](docs/prospectus.md) for the problem and the deliberate scope cut.
+
+## Releasing
+
+Use Conventional Commit titles for pull requests and squash-merge them so the title becomes the commit on `main`. Use `feat:` for a feature, `fix:` or `perf:` for a patch, and `!` after the type or scope for a breaking change. Documentation, tests, and maintenance changes do not publish a package by themselves. Before 1.0, features and breaking changes bump the minor version; fixes and performance improvements bump the patch version.
+
+Release Please opens a version and changelog pull request after a qualifying commit reaches `main`. Review and merge that pull request to create the GitHub release and `v*` tag. The tag triggers the [npm publishing workflow](.github/workflows/publish.yml), which builds and tests the package, then publishes through npm trusted publishing without an npm token.
+
+The release workflow uses a GitHub App installed only on this repository. Its client ID is stored in the `RELEASE_APP_CLIENT_ID` repository variable and its private key in the `RELEASE_APP_PRIVATE_KEY` repository secret. The app needs metadata read and contents, pull requests, and issues write permissions.
+
+If publishing fails, check whether that exact version already exists on npm before rerunning the tag workflow. npm versions cannot be published twice.
