@@ -1,0 +1,19 @@
+README.md
+  s_5565e0b58456ea::t_18d47f101589d9 30-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e0c1d502f981ed2eab54641bc5c3a4036ccc58ea",
+  "prompts": {},
+  "sessions": {
+    "s_5565e0b58456ea": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12334-2786-7690-8a84-db0b049942e7",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "DeAndre Harris <8107071+deandre@users.noreply.github.com>"
+    }
+  }
+}
