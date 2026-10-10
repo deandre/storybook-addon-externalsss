@@ -1,0 +1,37 @@
+assets/logo/externalsss-lockup.svg
+  s_5565e0b58456ea::t_073a4673821f7b 1-18
+assets/logo/externalsss-lockup-mono.svg
+  s_5565e0b58456ea::t_073a4673821f7b 1-18
+assets/logo/externalsss-symbol-mono.svg
+  s_5565e0b58456ea::t_073a4673821f7b 1-5
+assets/logo/USAGE.md
+  s_5565e0b58456ea::t_eb7e03c5823428 1-26
+assets/logo/externalsss-lockup-reversed.svg
+  s_5565e0b58456ea::t_073a4673821f7b 1-18
+README.md
+  s_5565e0b58456ea::t_eb7e03c5823428 1
+assets/logo/externalsss-symbol.svg
+  s_5565e0b58456ea::t_073a4673821f7b 1-5
+assets/logo/externalsss-symbol-reversed.svg
+  s_5565e0b58456ea::t_073a4673821f7b 1-5
+package.json
+  s_5565e0b58456ea::t_eb7e03c5823428 28
+assets/logo/externalsss-wordmark.svg
+  s_5565e0b58456ea::t_073a4673821f7b 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4edf640f364af5096546ccb2875a4c121c2cc56e",
+  "prompts": {},
+  "sessions": {
+    "s_5565e0b58456ea": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12334-2786-7690-8a84-db0b049942e7",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "DeAndre Harris <8107071+deandre@users.noreply.github.com>"
+    }
+  }
+}
