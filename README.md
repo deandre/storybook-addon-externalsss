@@ -27,12 +27,10 @@ Open Storybook, select a demo story, and open **Externalsss**. The demo has loca
 
 ## Install in another Storybook
 
-This package is not on npm yet. Build and pack this checkout, then install the tarball in a Storybook project using version 10.6.1 or a later 10.x release:
+In a Storybook project using version 10.6.1 or a later 10.x release, install the addon:
 
 ```sh
-pnpm build
-pnpm pack
-pnpm add -D /path/to/storybook-addon-externalsss-0.1.0.tgz
+pnpm add -D storybook-addon-externalsss
 ```
 
 Add the package to `.storybook/main.ts`:
@@ -43,7 +41,7 @@ export default {
 };
 ```
 
-You do not need a preview import or addon options. The addon requires React 18.2 or 19 for its manager panel; install that peer if your package manager does not do so automatically. Once the package is published, install it by name instead of using a tarball.
+You do not need a preview import or addon options. The addon requires React 18.2 or 19 for its manager panel; install that peer if your package manager does not do so automatically.
 
 ## What the scan can and cannot see
 
