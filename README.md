@@ -72,6 +72,6 @@ Use Conventional Commit titles for pull requests and squash-merge them so the ti
 
 Release Please opens a version and changelog pull request after a qualifying commit reaches `main`. Review and merge that pull request to create the GitHub release and `v*` tag. The tag triggers the [npm publishing workflow](.github/workflows/publish.yml), which builds and tests the package, then publishes through npm trusted publishing without an npm token.
 
-The release workflow uses a GitHub App installed only on this repository. Its client ID is stored in the `RELEASE_APP_CLIENT_ID` repository variable and its private key in the `RELEASE_APP_PRIVATE_KEY` repository secret. The app needs metadata read and contents, pull requests, and issues write permissions.
+The release workflow uses a GitHub App installed only on this repository. Its numeric App ID is stored in the `RELEASE_APP_ID` repository variable and its private key in the `RELEASE_APP_PRIVATE_KEY` repository secret. The app needs metadata read and contents, pull requests, and issues write permissions.
 
 If publishing fails, check whether that exact version already exists on npm before rerunning the tag workflow. npm versions cannot be published twice.
