@@ -1,4 +1,4 @@
-# Externalsss
+# <picture><source media="(prefers-color-scheme: dark)" srcset="assets/logo/externalsss-symbol-dark.svg"><img src="assets/logo/externalsss-symbol.svg" alt="" width="42" height="42"></picture> Externalsss
 
 Externalsss is an addon for Storybook 10.6.1 and later 10.x releases. It checks local stories for resources that could make visual tests inconsistent. Open the **Externalsss** panel and choose **Run scan**. The addon visits each story in a hidden preview, leaving your selected story and visible Canvas in place.
 

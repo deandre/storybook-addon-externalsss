@@ -25,6 +25,8 @@
   },
   "files": [
     "dist/**/*",
+    "assets/logo/externalsss-symbol.svg",
+    "assets/logo/externalsss-symbol-dark.svg",
     "README.md",
     "LICENSE"
   ],
