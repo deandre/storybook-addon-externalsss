@@ -5,7 +5,7 @@
   "author": "DeAndre Harris",
   "repository": {
     "type": "git",
-    "url": "https://github.com/deandre/storybook-addon-externalsss"
+    "url": "git+https://github.com/deandre/storybook-addon-externalsss.git"
   },
   "keywords": [
     "storybook-addon",
