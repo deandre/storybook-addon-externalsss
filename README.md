@@ -27,7 +27,13 @@ Open Storybook, select a demo story, and open **Externalsss**. The demo has loca
 
 ## Install in another Storybook
 
-In a Storybook project using version 10.6.1 or a later 10.x release, install the addon:
+In a Storybook project using version 10.6.1 or a later 10.x release, install the addon with npm:
+
+```sh
+npm install -D storybook-addon-externalsss
+```
+
+Or with pnpm:
 
 ```sh
 pnpm add -D storybook-addon-externalsss
