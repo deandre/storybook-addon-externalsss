@@ -189,8 +189,8 @@ export const Second = {};
 export const Third = {};
 `);
     // Storybook's own internal peers can auto-install React even in a Vue app.
-    // Omit those peers to verify the addon only uses the manager's supplied React.
-    run('npm', ['install', '--no-audit', '--no-fund', ...(!fixture.react ? ['--omit=peer'] : [])], directory);
+    // Ignore peer installation while retaining explicitly requested Storybook packages.
+    run('npm', ['install', '--no-audit', '--no-fund', ...(!fixture.react ? ['--legacy-peer-deps'] : [])], directory);
     if (!fixture.react) {
       try { await stat(join(directory, 'node_modules/react')); assert.fail('Vue fixture unexpectedly installed app React'); }
       catch (error) { if (error.code !== 'ENOENT') throw error; }
