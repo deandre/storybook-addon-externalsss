@@ -1,6 +1,6 @@
 # <picture><source media="(prefers-color-scheme: dark)" srcset="assets/logo/externalsss-symbol-dark.svg"><img src="assets/logo/externalsss-symbol.svg" alt="" width="42" height="42"></picture> Externalsss
 
-Externalsss is an addon for Storybook 10.6.1 and later 10.x releases. It checks local stories for resources that could make visual tests inconsistent. Open the **Externalsss** panel and choose **Run scan**. The addon visits each story in a hidden preview, leaving your selected story and visible Canvas in place.
+Externalsss is an addon for Storybook 9 and 10. It checks local stories for resources that could make visual tests inconsistent. Open the **Externalsss** panel and choose **Run scan**. The addon visits each story in a hidden preview, leaving your selected story and visible Canvas in place.
 
 The scan reports four kinds of findings:
 
@@ -11,7 +11,7 @@ The scan reports four kinds of findings:
 
 A resource can have more than one label, so category counts can overlap. Each count covers distinct resources in that category. Use the filters to see a category or the incomplete stories. Expand a result for the affected stories, full URL, and a suggested next step. Collapsed results hide query values.
 
-When a scan finishes or stops, choose **Download JSON** to save the report. It includes findings, affected stories, category counts, and a status for every story. Unvisited stories are marked `not-scanned`, so a cancelled or interrupted scan stays partial. The download omits resource URL query values and fragments. Check story names and resource paths before sharing it.
+When a scan finishes or stops, choose **Download JSON** to save the report. It includes findings, affected stories, category counts, and a status for every story. The report marks unvisited stories as `not-scanned`, so a cancelled or interrupted scan stays partial. The download omits resource URL query values and fragments. Check story names and resource paths before sharing it.
 
 ## Try the demo
 
@@ -27,7 +27,7 @@ Open Storybook, select a demo story, and open **Externalsss**. The demo has loca
 
 ## Install in another Storybook
 
-In a Storybook project using version 10.6.1 or a later 10.x release, install the addon with npm:
+In a Storybook 9 or 10 project using Node.js 20.19 or newer, install the addon with npm:
 
 ```sh
 npm install -D storybook-addon-externalsss
@@ -47,13 +47,17 @@ export default {
 };
 ```
 
-You do not need a preview import or addon options. The addon requires React 18.2 or 19 for its manager panel; install that peer if your package manager does not do so automatically.
+Storybook supplies React for the manager panel. The addon works with React and other frameworks without adding or changing your app's React dependencies. You don't need a preview import or addon options.
 
 ## What the scan can and cannot see
 
 The scan covers `story` entries in the current Storybook index and skips composed external catalogs. It reads browser Resource Timing entries and records fetch/XHR calls made after instrumentation starts. Resource Timing is not a complete network trace, and cross-origin response details may be unavailable. An unknown response status is not treated as a failure.
 
-Each story gets up to 15 seconds. After Storybook finishes rendering, the scan waits for images, fonts, stylesheets, and scripts to settle and then for 500 ms without activity. A timeout, render error, cancellation, unsupported browser API, or resource buffer limit leaves the story marked incomplete. Activity after the observation window may be missed. The scan uses the current Storybook globals and default story args.
+Each story gets up to 15 seconds. After Storybook finishes rendering, the scan waits for images, fonts, stylesheets, and scripts to settle and then for 500 ms without activity. It uses the current Storybook globals and default story args.
+
+A timeout, render error, cancellation, unsupported browser API, or resource buffer limit leaves the story marked incomplete. The scan may miss activity after the observation window.
+
+Custom preview URLs must use the same origin as the manager. The addon sends raw observations only to a same-origin parent so pages on other origins cannot receive resource URLs.
 
 Results stay in the browser tab until you download a JSON file. The addon does not send reports to a service, save them automatically, or change requests. It does not lint CSS font declarations or create mocks.
 
@@ -66,9 +70,12 @@ pnpm build
 pnpm build-storybook
 pnpm exec playwright install chromium
 pnpm test:browser
+pnpm test:compatibility
 ```
 
 `test:browser` expects the demo at `http://127.0.0.1:6100/`. Start it with `pnpm exec storybook dev -p 6100 --ci --no-open`, or set `EXTERNALSSS_STORYBOOK_URL` to another URL. `EXTERNALSSS_TEST_MODE=full` runs only the full-scan browser case, which is useful for a static build served under a subpath.
+
+`test:compatibility` packs the addon and installs it in temporary Storybook 9 and 10 projects. It covers React 18, React 19, Vue without React, Vite, and Webpack in development and static builds. Static checks also use a hosting subpath and a custom preview URL. Set `EXTERNALSSS_COMPAT_CASE` to a case name from `scripts/compatibility-test.mjs` to run one combination. CI runs each combination separately.
 
 ## Releasing
 

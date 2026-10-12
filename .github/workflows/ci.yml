@@ -24,3 +24,34 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: pnpm build-storybook
+
+  compatibility:
+    name: Compatibility (${{ matrix.fixture }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        fixture:
+          - 9.0-react18-vite
+          - 9.latest-vue-vite
+          - 10.0-react19-webpack
+          - 10.6.0-react19-vite
+          - 10.latest-vue-vite
+          - 10.latest-react18-webpack
+        include:
+          - fixture: 9.0-react18-vite
+            node: 20.19.0
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.22.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node || '24.12.0' }}
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:compatibility
+        env:
+          EXTERNALSSS_COMPAT_CASE: ${{ matrix.fixture }}

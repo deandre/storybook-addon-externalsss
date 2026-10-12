@@ -183,6 +183,8 @@ function runInstrumentation(currentRunId: string, currentStoryId: string): void 
       observation: observation(),
       ...(error ? { error } : {}),
     };
+    // Raw observations can contain URL query tokens. Only a same-origin parent
+    // may receive them; a foreign page can supply scan parameters when embedding us.
     window.parent.postMessage(message, window.location.origin);
   };
 
