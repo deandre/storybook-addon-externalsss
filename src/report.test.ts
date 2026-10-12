@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildReport } from './report';
+import { buildReport, replaceStoryResult, summarizeScan } from './report';
 import type { StoryResult } from './model';
 
 describe('buildReport', () => {
@@ -61,5 +61,43 @@ describe('buildReport', () => {
     }], 'complete', '2026-10-10T00:00:00.000Z');
     expect(report.findings[0]?.resource).toBe('[unparseable resource URL]');
     expect(JSON.stringify(report)).not.toContain('private-value');
+  });
+});
+
+describe('retry results', () => {
+  it('exports observed diagnostics without adding fields to unvisited stories', () => {
+    const targets = ['timeout', 'error', 'unsupported', 'missing'].map((id) => ({ id, name: id }));
+    const report = buildReport(targets, [
+      { storyId: 'timeout', status: 'timeout', findings: [], warnings: ['Assets did not settle within 12 seconds.'] },
+      { storyId: 'error', status: 'render-error', findings: [], warnings: [], error: 'Storybook reported a render or play error.' },
+      { storyId: 'unsupported', status: 'unsupported', findings: [], warnings: ['Invalid scan result received.'] },
+    ], 'complete', 'now');
+    expect(report.schemaVersion).toBe(1);
+    expect(report.stories).toEqual([
+      { ...targets[0], status: 'timeout', warnings: ['Assets did not settle within 12 seconds.'] },
+      { ...targets[1], status: 'render-error', warnings: [], error: 'Storybook reported a render or play error.' },
+      { ...targets[2], status: 'unsupported', warnings: ['Invalid scan result received.'] },
+      { ...targets[3], status: 'not-scanned' },
+    ]);
+    expect(summarizeScan(targets, []).incomplete.map(({ target }) => target.id)).toEqual(targets.map(({ id }) => id));
+  });
+
+  it('replaces the whole observation and removes obsolete findings while retaining completed stories', () => {
+    const targets = ['one', 'two', 'three'].map((id) => ({ id, name: id }));
+    const finding = { key: 'old', name: 'old', labels: ['failure'] as const, notes: [] };
+    const complete: StoryResult = { storyId: 'one', status: 'complete', findings: [], warnings: [] };
+    const previous: StoryResult[] = [complete, {
+      storyId: 'two', status: 'unsupported', findings: [{ ...finding, labels: [...finding.labels] }], warnings: ['old warning'], error: 'old error',
+    }];
+    const recovered: StoryResult = { storyId: 'two', status: 'complete', findings: [], warnings: [] };
+    const updated = replaceStoryResult(previous, recovered);
+    expect(updated).toEqual([complete, recovered]);
+    expect(updated[0]).toBe(complete);
+    expect(previous[1]?.warnings).toEqual(['old warning']);
+    expect(buildReport(targets, updated, 'complete', 'now').summary).toMatchObject({ findings: 0, completeStories: 2, incompleteStories: 1 });
+    expect(summarizeScan(targets, updated).incomplete.map(({ target }) => target.id)).toEqual(['three']);
+    const finished = replaceStoryResult(updated, { storyId: 'three', status: 'complete', findings: [], warnings: [] });
+    expect(finished).toHaveLength(3);
+    expect(summarizeScan(targets, finished).incomplete).toEqual([]);
   });
 });

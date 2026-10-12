@@ -93,6 +93,15 @@ async function cancelledScan() {
   assert.equal(partial.scanStatus, 'cancelled');
   assert(partial.stories.some((story) => story.status === 'not-scanned'));
   assert(partial.summary.incompleteStories > 0);
+  await page.getByRole('button', { name: 'Retry incomplete' }).click();
+  await waitForScan(page, 'Scan finished with gaps');
+  const mergedDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download JSON' }).click();
+  const merged = JSON.parse(await readFile(await (await mergedDownload).path(), 'utf8'));
+  assert.equal(merged.summary.totalStories, 10);
+  assert.equal(merged.summary.completeStories, 9);
+  assert(!merged.stories.some((story) => story.status === 'not-scanned'));
+  assert.deepEqual(merged.stories.filter((story) => partial.stories.some((old) => old.id === story.id && old.status === 'complete')), partial.stories.filter((story) => story.status === 'complete'));
   await page.close();
   console.log('PASS cancellation and partial JSON export');
 }
@@ -185,10 +194,124 @@ async function malformedResultScan() {
   console.log('PASS malformed scan result becomes incomplete');
 }
 
+
+async function retryScan() {
+  const page = await browser.newPage();
+  const requests = [];
+  let attempt = 0;
+  const first = 'externalsss-demo-resources--clean-image';
+  const failing = 'externalsss-demo-resources--render-error';
+  await page.route('**/iframe.html?**', async (route) => {
+    const url = new URL(route.request().url());
+    const id = url.searchParams.get('externalsssStory');
+    if (!id) { await route.continue(); return; }
+    requests.push(url);
+    const status = attempt === 0 && id === first ? 'unsupported'
+      : attempt < 3 && id === failing ? 'render-error' : 'complete';
+    const observation = { resources: [], images: [], elementErrors: [], fonts: [], warnings: status === 'unsupported' ? ['Resource Timing is unavailable; request coverage is incomplete.'] : [] };
+    if (attempt === 0 && id === first) observation.elementErrors.push({ tag: 'IMG', url: `${url.origin}/obsolete-image.png?token=secret` });
+    const message = { namespace: 'storybook-addon-externalsss', version: 1, type: 'result',
+      runId: url.searchParams.get('externalsssRun'), storyId: id, status, observation,
+      ...(status === 'render-error' ? { error: 'Storybook reported a render or play error.' } : {}),
+    };
+    const stale = attempt === 1 ? { ...message, runId: requests[0].searchParams.get('externalsssRun'), status: 'render-error' } : undefined;
+    await route.fulfill({ contentType: 'text/html', body: `<!doctype html><script>
+      ${stale ? `parent.postMessage(${JSON.stringify(stale)}, location.origin);` : ''}
+      setTimeout(() => parent.postMessage(${JSON.stringify(message)}, location.origin), ${attempt === 2 ? 5000 : 400});
+    </script>` });
+  });
+  await page.goto(new URL('?path=/story/externalsss-demo-resources--clean-image&globals=theme:dark&custom=original', base).href);
+  await page.getByRole('tab', { name: 'Externalsss' }).click();
+  const canvas = await page.locator('#storybook-preview-iframe').getAttribute('src');
+  const managerUrl = page.url();
+  const download = async () => {
+    const event = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Download JSON' }).click();
+    return JSON.parse(await readFile(await (await event).path(), 'utf8'));
+  };
+  await page.getByRole('button', { name: 'Run scan' }).click();
+  await waitForScan(page, 'Scan finished with gaps');
+  await page.locator('.externalsss').evaluate((panel) => { panel.style.width = '320px'; });
+  assert(await page.locator('.externalsss').evaluate((panel) => {
+    const bounds = panel.getBoundingClientRect();
+    return [...panel.querySelectorAll('.ext-actions button')].every((button) => {
+      const rect = button.getBoundingClientRect();
+      return rect.left >= bounds.left && rect.right <= bounds.right;
+    });
+  }), 'scan actions overflowed the narrow panel');
+  await page.locator('.externalsss').evaluate((panel) => { panel.style.width = ''; });
+  const original = await download();
+  assert.equal(original.summary.incompleteStories, 2);
+  assert.match(JSON.stringify(original), /Resource Timing is unavailable/);
+  assert.match(JSON.stringify(original), /Storybook reported a render or play error/);
+  assert.doesNotMatch(JSON.stringify(original), /token=secret/);
+  const retained = original.stories.filter((story) => story.status === 'complete');
+
+  // A failed retry must preserve the prior report and remain retryable.
+  await page.evaluate(() => {
+    const append = document.body.appendChild;
+    document.body.appendChild = function(node) {
+      if (node instanceof HTMLIFrameElement && node.title.startsWith('Externalsss background scan')) {
+        document.body.appendChild = append;
+        throw new Error('Test setup failure');
+      }
+      return append.call(this, node);
+    };
+    window.PREVIEW_URL = '/changed-preview.html?custom=changed';
+    history.replaceState(null, '', location.href.replace('theme:dark', 'theme:light').replace('custom=original', 'custom=changed'));
+  });
+  await page.getByRole('button', { name: 'Retry incomplete' }).click();
+  await waitForScan(page, 'Scan stopped');
+  assert.deepEqual((await download()).stories, original.stories);
+
+  attempt = 1;
+  let start = requests.length;
+  await page.getByRole('button', { name: 'Retry incomplete' }).click();
+  await waitForScan(page, 'Retrying 1 of 2');
+  assert.equal(await page.getByRole('progressbar').getAttribute('aria-valuemax'), '2');
+  assert.equal(await page.getByRole('progressbar').getAttribute('aria-valuenow'), '0');
+  await waitForScan(page, 'Scan finished with gaps');
+  assert.deepEqual(requests.slice(start).map((url) => url.searchParams.get('externalsssStory')), [first, failing]);
+  for (const url of requests.slice(start)) {
+    assert.equal(url.searchParams.get('globals'), requests[0].searchParams.get('globals'));
+    assert.equal(url.searchParams.get('custom'), 'original');
+    assert.equal(url.pathname, requests[0].pathname);
+    assert.notEqual(url.searchParams.get('externalsssRun'), requests[0].searchParams.get('externalsssRun'));
+  }
+  const partial = await download();
+  assert.equal(partial.summary.incompleteStories, 1);
+  assert.equal(partial.summary.findings, 0, 'obsolete findings survived replacement');
+  assert.deepEqual(partial.stories.filter((story) => retained.some(({ id }) => id === story.id)), retained);
+
+  attempt = 2;
+  await page.getByRole('button', { name: 'Retry incomplete' }).click();
+  await waitForScan(page, 'Retrying 1 of 1');
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await waitForScan(page, 'Scan cancelled');
+  const cancelled = await download();
+  assert.equal(cancelled.stories.find(({ id }) => id === failing).status, 'cancelled');
+  assert.deepEqual(cancelled.stories.filter(({ id }) => id !== failing), partial.stories.filter(({ id }) => id !== failing));
+
+  attempt = 3;
+  start = requests.length;
+  await page.getByRole('button', { name: 'Retry incomplete' }).click();
+  await waitForScan(page, 'Scan complete');
+  assert.deepEqual(requests.slice(start).map((url) => url.searchParams.get('externalsssStory')), [failing]);
+  const recovered = await download();
+  assert.equal(recovered.summary.completeStories, 10);
+  assert.equal(recovered.summary.incompleteStories, 0);
+  assert.equal(await page.getByRole('button', { name: 'Retry incomplete' }).count(), 0);
+  assert.equal(await page.locator('#storybook-preview-iframe').getAttribute('src'), canvas);
+  assert.equal(page.url(), managerUrl.replace('theme:dark', 'theme:light').replace('custom=original', 'custom=changed'));
+  await page.close();
+  console.log('PASS retry diagnostics, retained results/settings, progress, stale replies, replacement, setup failure, cancellation and recovery');
+}
+
 try {
   await fullScan();
   if (!fullOnly) {
     await cancelledScan();
+    await retryScan();
     await delayedStylesheetScan();
     await timedOutScan();
     await malformedResultScan();

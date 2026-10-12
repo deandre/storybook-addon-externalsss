@@ -18,6 +18,12 @@ export interface IncompleteStory<T extends ReportTarget> {
   status: StoryResult['status'] | 'not-scanned';
 }
 
+export function replaceStoryResult(results: StoryResult[], result: StoryResult): StoryResult[] {
+  const position = results.findIndex((existing) => existing.storyId === result.storyId);
+  if (position === -1) return [...results, result];
+  return results.map((existing, index) => index === position ? result : existing);
+}
+
 export function groupFindings(results: StoryResult[]): GroupedFinding[] {
   const grouped = new Map<string, { finding: Finding; storyIds: Set<string> }>();
   for (const result of results) {
@@ -81,11 +87,16 @@ export function buildReport(targets: ReportTarget[], results: StoryResult[], sta
     generatedAt,
     scanStatus: state,
     summary,
-    stories: targets.map((target) => ({
-      id: target.id,
-      name: target.name,
-      status: resultById.get(target.id)?.status ?? 'not-scanned',
-    })),
+    stories: targets.map((target) => {
+      const result = resultById.get(target.id);
+      return {
+        id: target.id,
+        name: target.name,
+        status: result?.status ?? 'not-scanned',
+        ...(result ? { warnings: result.warnings } : {}),
+        ...(result?.error !== undefined ? { error: result.error } : {}),
+      };
+    }),
     findings: groups.map(({ finding, storyIds }) => ({
       resource: safeResourceName(finding),
       labels: finding.labels,

@@ -11,7 +11,9 @@ The scan reports four kinds of findings:
 
 A resource can have more than one label, so category counts can overlap. Each count covers distinct resources in that category. Use the filters to see a category or the incomplete stories. Expand a result for the affected stories, full URL, and a suggested next step. Collapsed results hide query values.
 
-When a scan finishes or stops, choose **Download JSON** to save the report. It includes findings, affected stories, category counts, and a status for every story. The report marks unvisited stories as `not-scanned`, so a cancelled or interrupted scan stays partial. The download omits resource URL query values and fragments. Check story names and resource paths before sharing it.
+When a scan finishes or stops, choose **Download JSON** to save the report. It includes findings, affected stories, category counts, and a status for every story. Observed stories also include diagnostic warnings and an error message when available. The report marks unvisited stories as `not-scanned`, so a cancelled or interrupted scan stays partial. The download omits resource URL query values and fragments. Check story names and resource paths before sharing it.
+
+Choose **Retry incomplete** to revisit only stories whose observations did not complete, including stories not reached before cancellation. Completed observations stay in the report. Retries keep the original globals and preview settings; **Scan again** starts a new catalog scan with your current settings.
 
 ## Try the demo
 

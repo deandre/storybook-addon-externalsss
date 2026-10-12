@@ -22,6 +22,7 @@ export const panelStyles = `
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 16px;
   min-height: 50px;
   padding: 6px 16px;
@@ -30,7 +31,7 @@ export const panelStyles = `
 .ext-heading { min-width: 0; }
 .ext-heading h2 { margin: 0; font-size: 15px; line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; }
 .ext-heading p { margin: 2px 0 0; color: var(--ext-muted); line-height: 1.3; }
-.ext-actions { display: flex; align-items: center; gap: 7px; flex: none; }
+.ext-actions { display: flex; align-items: center; flex-wrap: wrap; max-width: 100%; gap: 7px; flex: none; }
 .ext-button {
   min-height: 32px;
   padding: 5px 11px;
