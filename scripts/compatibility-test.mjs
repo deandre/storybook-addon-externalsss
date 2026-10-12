@@ -65,7 +65,7 @@ async function staticServer(directory) {
   return { server, origin: await listen(server) };
 }
 
-async function smoke(browser, base, customPreview) {
+async function smoke(browser, base, customPreview, reactHost) {
   const page = await browser.newPage();
   const errors = [];
   const scanUrls = [];
@@ -91,9 +91,19 @@ async function smoke(browser, base, customPreview) {
     const partial = JSON.parse(await readFile(await (await download).path(), 'utf8'));
     assert.equal(partial.scanStatus, 'cancelled');
     assert(partial.stories.some((story) => story.status === 'not-scanned'));
+    assert.equal(page.url(), initialUrl);
+    assert.equal(await page.locator('#storybook-preview-iframe').getAttribute('src'), initialCanvas);
 
+    await page.locator('button[title="theme"], button[aria-label="theme dark"]').click();
+    await page.getByText('light', { exact: true }).click();
+    await page.waitForFunction(() => new URLSearchParams(location.search).get('globals') !== 'theme:dark');
+    if (reactHost) await page.frameLocator('#storybook-preview-iframe').getByText('Changed light').waitFor();
+    const canvasText = await page.frameLocator('#storybook-preview-iframe').getByText(/^Changed /).innerText();
+    const retryUrl = page.url();
+    const retryCanvas = await page.locator('#storybook-preview-iframe').getAttribute('src');
+    await page.evaluate(() => { window.PREVIEW_URL = '/unused-preview.html?custom=changed'; });
     scanUrls.length = 0;
-    await page.getByRole('button', { name: 'Scan again' }).click();
+    await page.getByRole('button', { name: 'Retry incomplete' }).click();
     await page.getByRole('status').filter({ hasText: 'Scan complete' }).waitFor({ timeout: 60000 });
     download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download JSON' }).click();
@@ -112,9 +122,9 @@ async function smoke(browser, base, customPreview) {
         assert.equal(url.searchParams.get('token'), 'a&b');
       }
     }
-    assert.equal(page.url(), initialUrl);
-    assert.equal(await page.locator('#storybook-preview-iframe').getAttribute('src'), initialCanvas);
-    await page.frameLocator('#storybook-preview-iframe').getByText('Changed dark').waitFor();
+    assert.equal(page.url(), retryUrl);
+    assert.equal(await page.locator('#storybook-preview-iframe').getAttribute('src'), retryCanvas);
+    await page.frameLocator('#storybook-preview-iframe').getByText(canvasText, { exact: true }).waitFor();
     assert.deepEqual(errors, []);
   } catch (error) {
     console.error('Browser errors:', errors, 'Scan URLs:', scanUrls.map(String));
@@ -203,7 +213,7 @@ export const Third = {};
     const child = spawn(process.execPath, [storybookBin, 'dev', '-p', new URL(origin).port, '--ci', '--no-open'], {
       cwd: directory, stdio: 'inherit', env: { ...process.env, STORYBOOK_DISABLE_TELEMETRY: '1' },
     });
-    try { await waitForServer(origin, child); await smoke(browser, `${origin}/`); }
+    try { await waitForServer(origin, child); await smoke(browser, `${origin}/`, undefined, Boolean(fixture.react)); }
     finally {
       child.kill('SIGTERM');
       if (child.exitCode === null) await new Promise((resolve) => child.once('exit', resolve));
@@ -211,7 +221,7 @@ export const Third = {};
     run(process.execPath, [storybookBin, 'build', '--quiet'], directory);
     const hosted = await staticServer(join(directory, 'storybook-static'));
     try {
-      await smoke(browser, `${hosted.origin}/catalog/`, `${hosted.origin}/preview/iframe.html?token=a%26b`);
+      await smoke(browser, `${hosted.origin}/catalog/`, `${hosted.origin}/preview/iframe.html?token=a%26b`, Boolean(fixture.react));
       await reportOriginCheck(browser, `${hosted.origin}/catalog/`);
     }
     finally { hosted.server.closeAllConnections(); await new Promise((resolve) => hosted.server.close(resolve)); }

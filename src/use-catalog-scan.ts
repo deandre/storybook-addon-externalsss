@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
 import { useStorybookState, type API } from 'storybook/manager-api';
 import { classifyObservation, type StoryResult } from './model';
-import { MESSAGE_NAMESPACE, MESSAGE_TYPE, isScanMessage, isScanMessageCandidate } from './protocol';
-import type { ScanState } from './report';
+import { MESSAGE_NAMESPACE, MESSAGE_TYPE, RUN_QUERY_PARAM, isScanMessage, isScanMessageCandidate } from './protocol';
+import { replaceStoryResult, type ScanState } from './report';
 import { getStoryTargets, type StoryTarget } from './storybook-compat';
 export type { StoryTarget } from './storybook-compat';
 
@@ -10,7 +10,7 @@ const STORY_LIMIT_MS = 15000;
 
 export type ScanSession =
   | { phase: 'idle' }
-  | { phase: 'running'; targets: StoryTarget[]; results: StoryResult[] }
+  | { phase: 'running'; targets: StoryTarget[]; results: StoryResult[]; retrying: boolean; progress: { completed: number; total: number; current?: string } }
   | { phase: 'finished'; outcome: ScanState; targets: StoryTarget[]; results: StoryResult[]; error?: string };
 
 function createRunId(): string {
@@ -99,21 +99,28 @@ export function useCatalogScan(api: API) {
   const [session, setSession] = useState<ScanSession>({ phase: 'idle' });
   const controller = useRef<AbortController | null>(null);
 
-  const run = async () => {
-    if (controller.current) return;
-    let targets: StoryTarget[] = [];
-    let results: StoryResult[] = [];
+  const run = async (retrying = false) => {
+    if (controller.current || (retrying && session.phase !== 'finished')) return;
+    let targets: StoryTarget[] = retrying && session.phase === 'finished' ? session.targets : [];
+    let results: StoryResult[] = retrying && session.phase === 'finished' ? session.results : [];
     try {
       const scanRunId = createRunId();
-      targets = getStoryTargets(api, scanRunId, { index });
+      if (!retrying) targets = getStoryTargets(api, scanRunId, { index });
+      const resultById = new Map(results.map((result) => [result.storyId, result]));
+      const pending = targets.filter((target) => !retrying || resultById.get(target.id)?.status !== 'complete');
+      if (retrying && pending.length === 0) return;
       const abort = new AbortController();
       controller.current = abort;
-      setSession({ phase: 'running', targets, results });
-      for (const target of targets) {
+      let completed = 0;
+      for (const target of pending) {
         if (abort.signal.aborted) break;
-        const result = await scanStory(target, scanRunId, abort.signal);
-        results = [...results, result];
-        setSession({ phase: 'running', targets, results });
+        setSession({ phase: 'running', targets, results, retrying,
+          progress: { completed, total: pending.length, current: target.name } });
+        const preview = new URL(target.previewHref);
+        preview.searchParams.set(RUN_QUERY_PARAM, scanRunId);
+        const result = await scanStory({ ...target, previewHref: preview.href }, scanRunId, abort.signal);
+        results = replaceStoryResult(results, result);
+        completed += 1;
         if (result.status === 'cancelled') break;
       }
       setSession({ phase: 'finished', outcome: abort.signal.aborted ? 'cancelled' : 'complete', targets, results });
@@ -125,5 +132,5 @@ export function useCatalogScan(api: API) {
     }
   };
 
-  return { session, run, cancel: () => controller.current?.abort() };
+  return { session, run: () => run(), retry: () => run(true), cancel: () => controller.current?.abort() };
 }

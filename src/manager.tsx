@@ -65,14 +65,15 @@ function themeVariables(theme: StorybookTheme): React.CSSProperties {
 
 function ExternalsssPanel({ api, active }: { api: API; active: boolean }) {
   const theme = useTheme() as StorybookTheme;
-  const { session, run, cancel } = useCatalogScan(api);
+  const { session, run, retry, cancel } = useCatalogScan(api);
   const [filter, setFilter] = useState<Filter>('all');
   const targets = session.phase === 'idle' ? [] : session.targets;
   const results = session.phase === 'idle' ? [] : session.results;
   const running = session.phase === 'running';
   const runState = session.phase === 'finished' ? session.outcome : 'idle';
   const error = session.phase === 'finished' ? session.error : undefined;
-  const summary = useMemo(() => summarizeScan(targets, results, !running), [targets, results, running]);
+  const includeUnvisited = session.phase !== 'running' || session.retrying;
+  const summary = useMemo(() => summarizeScan(targets, results, includeUnvisited), [targets, results, includeUnvisited]);
   const { groups, incomplete, scannedStories: completedCount } = summary;
   const targetById = useMemo(() => new Map(targets.map((target) => [target.id, target])), [targets]);
   const unvisited = incomplete.filter((item) => item.status === 'not-scanned');
@@ -86,11 +87,11 @@ function ExternalsssPanel({ api, active }: { api: API; active: boolean }) {
   const showIncomplete = filter === 'all' || filter === 'incomplete';
   const hasVisibleResults = visibleGroups.length > 0 || (showIncomplete && incomplete.length > 0);
   const status = running
-    ? { title: `Scanning ${Math.min(completedCount + 1, targets.length)} of ${targets.length}`, detail: targets[completedCount]?.name ?? '' }
+    ? { title: `${session.retrying ? 'Retrying' : 'Scanning'} ${Math.min(session.progress.completed + 1, session.progress.total)} of ${session.progress.total}`, detail: session.progress.current ?? '' }
     : runState === 'cancelled'
       ? { title: 'Scan cancelled', detail: `${completedCount} of ${targets.length} stories checked. Results are partial.` }
       : runState === 'error'
-        ? { title: 'Scan stopped', detail: targets.length ? 'Results are partial. Run the scan again to retry.' : 'The scan could not start. Run it again to retry.' }
+        ? { title: 'Scan stopped', detail: targets.length ? 'Results are partial. Retry incomplete stories or start a new scan.' : 'The scan could not start. Run it again to retry.' }
         : runState === 'complete'
           ? { title: incomplete.length ? 'Scan finished with gaps' : 'Scan complete', detail: `${completedCount} ${completedCount === 1 ? 'story' : 'stories'} checked${incomplete.length ? ` · ${incomplete.length} incomplete` : ''}.` }
           : { title: 'Ready to scan', detail: 'Check every local story without changing the Canvas.' };
@@ -120,6 +121,7 @@ function ExternalsssPanel({ api, active }: { api: API; active: boolean }) {
         </div>
         <div className="ext-actions">
           <button type="button" className="ext-button ext-button--primary" onClick={() => { setFilter('all'); void run(); }} disabled={running}>{running ? 'Scanning…' : runState === 'idle' ? 'Run scan' : 'Scan again'}</button>
+          {!running && session.phase === 'finished' && incomplete.length > 0 && <button type="button" className="ext-button" onClick={() => { setFilter('all'); void retry(); }}>Retry incomplete</button>}
           {running && <button type="button" className="ext-button" onClick={cancel}>Cancel</button>}
           {!running && runState !== 'idle' && targets.length > 0 && <button type="button" className="ext-button" onClick={downloadReport}>Download JSON</button>}
         </div>
@@ -127,7 +129,7 @@ function ExternalsssPanel({ api, active }: { api: API; active: boolean }) {
       <div className={`ext-status ${runState === 'error' ? 'ext-status--error' : incomplete.length && !running ? 'ext-status--partial' : ''}`} role="status" aria-live="polite">
         <strong>{status.title}</strong>
         <span className="ext-status-detail" title={status.detail}>{status.detail}</span>
-        {running && targets.length > 0 && <div className="ext-progress" role="progressbar" aria-label="Stories checked" aria-valuemin={0} aria-valuemax={targets.length} aria-valuenow={completedCount}><span style={{ transform: `scaleX(${completedCount / targets.length})` }} /></div>}
+        {running && session.progress.total > 0 && <div className="ext-progress" role="progressbar" aria-label="Stories checked" aria-valuemin={0} aria-valuemax={session.progress.total} aria-valuenow={session.progress.completed}><span style={{ transform: `scaleX(${session.progress.completed / session.progress.total})` }} /></div>}
       </div>
       {error && <p role="alert" className="ext-error">{error}</p>}
       {targets.length > 0 && <div className="ext-toolbar" role="group" aria-label="Finding counts">
