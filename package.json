@@ -1,6 +1,6 @@
 {
   "name": "storybook-addon-externalsss",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Audit resource stability across a Storybook catalog",
   "author": "DeAndre Harris",
   "repository": {
