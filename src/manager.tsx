@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { addons, types, type API } from 'storybook/manager-api';
 import { AddonPanel } from 'storybook/internal/components';
 import { useTheme, type StorybookTheme } from 'storybook/theming';

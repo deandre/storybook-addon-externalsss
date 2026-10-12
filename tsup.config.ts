@@ -9,5 +9,6 @@ export default defineConfig({
   target: 'esnext',
   dts: true,
   splitting: false,
-  external: ['react', 'react-dom', 'react/jsx-runtime', 'storybook/manager-api', 'storybook/preview-api', 'storybook/theming', 'storybook/internal/components', 'storybook/internal/core-events'],
+  // Classic JSX in tsconfig uses manager React; JSX runtimes are not manager globals.
+  external: ['react', 'react-dom', 'storybook/manager-api', 'storybook/preview-api', 'storybook/theming', 'storybook/internal/components', 'storybook/internal/core-events'],
 });
