@@ -23,7 +23,7 @@ describe('panel presentation policy', () => {
       targets: [],
       results: [],
       retrying: false,
-      progress: { completed: 0, total: 0 },
+      progress: { completed: 0, total: 0, active: 0 },
     };
     expect(renderPanel(session, 'all', true).status.title).toBe('Connecting to catalog');
     expect(renderPanel({ phase: 'idle' }, 'all', true, false).actions.runDisabled).toBe(true);
@@ -43,7 +43,7 @@ describe('panel presentation policy', () => {
       targets,
       results: [result],
       retrying: false,
-      progress: { completed: 1, total: 2 },
+      progress: { completed: 1, total: 2, active: 0 },
     };
     expect(renderPanel(session, 'incomplete', false).unvisited).toHaveLength(0);
     expect(renderPanel({ ...session, retrying: true }, 'incomplete', false).unvisited).toHaveLength(1);
@@ -64,12 +64,12 @@ describe('cached panel data', () => {
       targets,
       results: [observed],
       retrying: false,
-      progress: { completed: 1, total: 2 },
+      progress: { completed: 1, total: 2, active: 0 },
     };
     const initial = renderPanel(session, 'all', false);
     const cached = { summary: initial.summary, targetById: initial.targetById };
     readFindings.mockClear();
-    const next = { ...session, progress: { ...session.progress, current: 'two' } };
+    const next = { ...session, progress: { ...session.progress, active: 1, current: 'two' } };
     for (const filter of ['all', 'external', 'incomplete'] as const) {
       const model = panelModel(next, filter, false, true, cached);
       expect(model.summary).toBe(initial.summary);
@@ -85,10 +85,10 @@ describe('cached panel data', () => {
       targets,
       results: [result],
       retrying: false,
-      progress: { completed: 1, total: 2 },
+      progress: { completed: 1, total: 2, active: 0 },
     };
     const inputs = panelInputs(session);
-    const progressInputs = panelInputs({ ...session, progress: { ...session.progress, current: 'two' } });
+    const progressInputs = panelInputs({ ...session, progress: { ...session.progress, active: 1, current: 'two' } });
     expect(progressInputs.targets).toBe(inputs.targets);
     expect(progressInputs.results).toBe(inputs.results);
     expect(progressInputs.includeUnvisited).toBe(inputs.includeUnvisited);
@@ -100,9 +100,23 @@ describe('cached panel data', () => {
     const replacement = {
       ...session,
       results: [result, { ...result, storyId: 'two' }],
-      progress: { completed: 2, total: 2 },
+      progress: { completed: 2, total: 2, active: 0 },
     };
     expect(panelInputs(replacement).results).not.toBe(inputs.results);
     expect(renderPanel(replacement, 'all', false).summary.completeStories).toBe(2);
   });
+});
+
+it('shows completed counts and active observations for full scans and retries', () => {
+  for (const retrying of [false, true]) {
+    const session: ScanSession = { phase: 'running', targets, results: [result], retrying, progress: { completed: 1, total: 2, active: 1, current: 'two' } };
+    const model = renderPanel(session, 'all', false);
+    expect(model.status.title).toBe(`${retrying ? 'Retrying' : 'Scanning'}: 1 of 2 completed · 1 active`);
+    expect(model.status.detail).toBe('two');
+  }
+});
+
+it('omits a single current-story label when multiple stories are active', () => {
+  const session: ScanSession = { phase: 'running', targets, results: [], retrying: false, progress: { completed: 0, total: 2, active: 2, current: 'one' } };
+  expect(renderPanel(session, 'all', false).status.detail).toBe('');
 });

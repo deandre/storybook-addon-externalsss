@@ -53,12 +53,16 @@ try {
     env: { ...process.env, STORYBOOK_DISABLE_TELEMETRY: '1' },
   });
   await ready();
-  test = spawn(process.execPath, ['scripts/browser-test.mjs'], {
-    stdio: 'inherit',
-    env: { ...process.env, EXTERNALSSS_STORYBOOK_URL: base, EXTERNALSSS_TEST_MODE: '' },
-  });
-  const [code] = await once(test, 'exit');
-  if (code !== 0) throw new Error(`Browser suite exited with ${code}.`);
+  const limits = process.env.EXTERNALSSS_TEST_CONCURRENCY ? [Number(process.env.EXTERNALSSS_TEST_CONCURRENCY)] : [1, 2, 4];
+  for (const limit of limits) {
+    console.log(`Browser suite: concurrency ${limit}`);
+    test = spawn(process.execPath, ['scripts/browser-test.mjs'], {
+      stdio: 'inherit',
+      env: { ...process.env, EXTERNALSSS_STORYBOOK_URL: base, EXTERNALSSS_TEST_MODE: '', EXTERNALSSS_TEST_CONCURRENCY: String(limit) },
+    });
+    const [code] = await once(test, 'exit');
+    if (code !== 0) throw new Error(`Browser suite at concurrency ${limit} exited with ${code}.`);
+  }
 } finally {
   await shutdown();
 }

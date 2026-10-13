@@ -224,7 +224,7 @@ async function composedScan(browser, source, composedDirectory) {
     // Cancellation during connection tears down the bridge. Starting again
     // must establish a fresh connection, then retain it for later retries.
     await page.locator('.externalsss').getByRole('button', { name: 'Scan again' }).click();
-    await page.locator('.externalsss').getByRole('status').filter({ hasText: 'Scanning 1 of 3' }).waitFor({ timeout: 35000 });
+    await page.locator('.externalsss').getByRole('status').filter({ hasText: 'Scanning: 0 of 3 completed' }).waitFor({ timeout: 35000 });
     assert(await page.getByRole('combobox', { name: 'Catalog' }).isDisabled());
     await page.locator('.externalsss').getByRole('button', { name: 'Cancel' }).click();
     await page.locator('.externalsss').getByRole('status').filter({ hasText: 'Scan cancelled' }).waitFor();

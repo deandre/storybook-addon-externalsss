@@ -1,9 +1,18 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { chromium } from 'playwright';
 import { managerHead } from '../dist/preset.js';
+
+if (!process.env.EXTERNALSSS_TEST_CONCURRENCY) {
+  for (const limit of [1, 2, 4]) {
+    console.log(`Composition suite: concurrency ${limit}`);
+    execFileSync(process.execPath, [resolve('scripts/composition-security-test.mjs')], { stdio: 'inherit', env: { ...process.env, EXTERNALSSS_TEST_CONCURRENCY: String(limit) } });
+  }
+  process.exit(0);
+}
 
 const hostDirectory = resolve(process.env.EXTERNALSSS_COMPOSITION_HOST_DIR ?? 'storybook-static');
 const sourceDirectory = resolve(process.env.EXTERNALSSS_COMPOSITION_SOURCE_DIR ?? 'storybook-static');
@@ -20,9 +29,14 @@ async function serve(port, remote = false) {
       const file = resolve(directory, `.${pathname.endsWith('/') ? `${pathname}index.html` : pathname}`);
       assert(file.startsWith(`${directory}/`));
       let content = await readFile(file);
-      if (remote && file.endsWith('/index.html')) {
-        const policy = managerHead('', { trustedManagerOrigins: url.pathname.startsWith('/deny/') ? [] : [hostOrigin] }).split('</script>')[0] + '</script>';
-        content = Buffer.from(content.toString().replace(/<script id="externalsss-trusted-origins"[^>]*>[\s\S]*?<\/script>/, policy));
+      if (file.endsWith('/index.html')) {
+        const options = managerHead('', { scanConcurrency: Number(process.env.EXTERNALSSS_TEST_CONCURRENCY ?? 1), trustedManagerOrigins: remote && !url.pathname.startsWith('/deny/') ? [hostOrigin] : [] });
+        let html = content.toString();
+        for (const id of ['externalsss-trusted-origins', 'externalsss-scan-options']) {
+          const pattern = new RegExp(`<script id="${id}"[^>]*>[\\s\\S]*?<\\/script>`);
+          html = html.replace(pattern, options.match(pattern)[0]);
+        }
+        content = Buffer.from(html);
       }
       response.setHeader('Access-Control-Allow-Origin', '*');
       response.setHeader('Content-Type', ({ html: 'text/html', js: 'text/javascript', json: 'application/json', css: 'text/css', svg: 'image/svg+xml' })[file.split('.').at(-1)] ?? 'application/octet-stream');
@@ -36,7 +50,7 @@ const host = await serve(6150);
 const source = await serve(0, true);
 const foreign = await serve(0);
 const browser = await chromium.launch();
-const header = (bridgeId, requestId, type, extra = {}) => ({ namespace, version: 2, bridgeId, requestId, type, ...extra });
+const header = (bridgeId, requestId, type, extra = {}) => ({ namespace, version: 3, bridgeId, requestId, type, ...extra });
 async function probe(parent, denied = false) {
   const page = await browser.newPage();
   await page.goto(`${parent}/probe.html`);
@@ -87,7 +101,7 @@ async function openHost(mode = 'real') {
     const url = new URL(route.request().url());
     if (!url.searchParams.has('externalsssStory')) { await route.continue(); return; }
     const observation = { resources: [{ url: `${url.origin}/${url.origin === hostOrigin ? 'local' : 'remote'}.json?token=private`, initiatorType: 'fetch', startTime: 0 }], images: [], elementErrors: [], fonts: [], warnings: [] };
-    await route.fulfill({ contentType: 'text/html', body: `<script>setTimeout(()=>parent.postMessage(${JSON.stringify({ namespace: 'storybook-addon-externalsss', version: 1, type: 'result', runId: url.searchParams.get('externalsssRun'), storyId: url.searchParams.get('externalsssStory'), status: 'complete', observation })}, location.origin),100);</script>` });
+    await route.fulfill({ contentType: 'text/html', body: `<script>setTimeout(()=>parent.postMessage(${JSON.stringify({ namespace: 'storybook-addon-externalsss', version: 1, type: 'result', runId: url.searchParams.get('externalsssRun'), storyId: url.searchParams.get('externalsssStory'), status: 'complete', observation })}, location.origin),${100 + [...url.searchParams.get('externalsssStory')].reduce((sum, c) => sum + c.charCodeAt(0), 0) % 5 * 40});</script>` });
   });
   if (mode !== 'real') await page.route(`${source.origin}/?**`, async (route) => {
     const url = new URL(route.request().url());
@@ -95,7 +109,7 @@ async function openHost(mode = 'real') {
     const bridgeId = url.searchParams.get('externalsssBridge');
     const targets = ['first', 'second'].map((id) => ({ id, name: id, managerHref: `${source.origin}/?path=/story/${id}`, previewHref: `${source.origin}/iframe.html?id=${id}` }));
     const results = [{ storyId: 'first', status: 'complete', warnings: [], findings: [] }];
-    const session = { phase: 'running', targets, results: [], retrying: false, progress: { completed: 0, total: 2 } };
+    const session = { phase: 'running', targets, results: [], retrying: false, progress: { completed: 0, total: 2, active: 0 } };
     await route.fulfill({ contentType: 'text/html', body: `<script>
       addEventListener('message', event => {
         const data=event.data;
@@ -107,13 +121,13 @@ async function openHost(mode = 'real') {
           if(${JSON.stringify(mode)}==='malformed') reply('event',{event:{type:'started',session:{phase:'running',targets:42},pendingStoryIds:[]}});
           else {
             reply('event',{event:{type:'started',session:${JSON.stringify(session)},pendingStoryIds:['first','second']}});
-            reply('event',{event:{type:'result',result:${JSON.stringify(results[0])},progress:{completed:1,total:2}}});
-            reply('event',{event:{type:'progress',progress:{completed:1,total:2,current:'second'}}});
+            reply('event',{event:{type:'result',result:${JSON.stringify(results[0])},progress:{completed:1,total:2,active:0}}});
+            reply('event',{event:{type:'progress',progress:{completed:1,total:2,active:1,current:'second'}}});
             if(${JSON.stringify(mode)}==='stale') {
               parent.postMessage({...data,requestId:'old',version:999,type:'error',error:'stale error'},event.origin);
               setTimeout(()=>parent.postMessage({...data,type:'error',version:999,error:'late completed request'},event.origin),400);
               setTimeout(()=>{
-                reply('event',{event:{type:'result',result:{storyId:'second',status:'complete',warnings:[],findings:[]},progress:{completed:2,total:2}}});
+                reply('event',{event:{type:'result',result:{storyId:'second',status:'complete',warnings:[],findings:[]},progress:{completed:2,total:2,active:0}}});
                 reply('event',{event:{type:'finished',outcome:'complete',unresolved:[]}});
               },200);
             }

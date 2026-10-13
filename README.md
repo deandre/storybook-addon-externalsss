@@ -59,6 +59,25 @@ export default {
 
 Storybook supplies React for the manager panel. The addon works with React and other frameworks without adding or changing your app's React dependencies. Local scans need no preview import or addon options.
 
+## Configure parallel scanning
+
+Scans run two stories concurrently by default. Set `scanConcurrency` to an integer from 1 through 4 in `.storybook/main.ts`:
+
+```ts
+export default {
+  addons: [
+    {
+      name: 'storybook-addon-externalsss',
+      options: { scanConcurrency: 2 },
+    },
+  ],
+};
+```
+
+Each active story has its own hidden iframe and 15-second deadline. Progress shows completed stories and active observations. **Cancel** stops queued stories, aborts active observations, and preserves collected results. **Retry incomplete** retains the scan's concurrency and original preview settings. Results stay in catalog order even when stories finish in a different order.
+
+Parallel stories share browser CPU, network, cache, origin storage, and service workers. Contention can change font timing or cause timeouts, and stories can interfere through shared storage. Set `scanConcurrency: 1` to restore sequential scanning. Each referenced Storybook uses its own addon option; the host does not override it.
+
 ## Scan a composed Storybook
 
 When your Storybook has `refs`, choose **Local** or a referenced catalog in the panel's **Catalog** selector. Each scan and JSON report covers one catalog. Loading or unavailable refs cannot be selected.
@@ -78,7 +97,7 @@ export default {
 };
 ```
 
-Include the port for development origins, such as `http://localhost:6006`. Wildcards, paths, query strings, and fragments are not accepted. Remote access is denied unless the origin is listed; URL parameters cannot grant access. Deploy the updated referenced Storybook before scanning it from the host. The host and referenced Storybooks must both use Externalsss bridge protocol v2; older bridge versions are rejected. Upgrade both installations together.
+Include the port for development origins, such as `http://localhost:6006`. Wildcards, paths, query strings, and fragments are not accepted. Remote access is denied unless the origin is listed; URL parameters cannot grant access. Deploy the updated referenced Storybook before scanning it from the host. The host and referenced Storybooks must both use Externalsss bridge protocol v3; older bridge versions are rejected. Upgrade both installations together.
 
 Remote scans run in a hidden instance of the referenced Storybook's manager and use that catalog's default globals and preview configuration. Nested refs are excluded. The host's visible Canvas stays in place, and story links open the source Storybook. **Retry incomplete** reuses the remote scan's original context.
 
@@ -111,9 +130,24 @@ pnpm test:composition
 pnpm test:compatibility
 ```
 
+`pnpm benchmark:scans` builds an isolated 500-story catalog and compares concurrency 1, 2, and 4. It runs three fresh-context and three warm-cache scans for both local and composed catalogs, checks cancellation and Canvas isolation, and records duration, incomplete stories, per-story classifications, bridge payload volume, peak iframe count, and result-copying/aggregation timings. The benchmark uses ports 6160–6162. Raw results stay in the printed workspace under `node_modules/.cache`. Set `EXTERNALSSS_BENCH_OUTPUT` to choose another output path. `EXTERNALSSS_BENCH_STORIES` and `EXTERNALSSS_BENCH_REPETITIONS` support shorter smoke runs, which cannot select a parallel default.
+
+Two becomes the recommended default only if all four cohorts improve median duration by at least 20%, sequential runs agree, and parallel scans add no incomplete stories or classification differences. Cancellation and Canvas checks must pass. Concurrency four remains configurable.
+
+The [500-story benchmark results](scripts/benchmark-results.json) from October 13, 2026 passed that gate, so the default is two. All 36 scans had the same 50 intentional render errors and no classification differences against their respective sequential baselines. Cancellation, Canvas globals/selection, message isolation, and iframe cleanup passed at every limit. These are local headless Chromium results on an Apple M2 Max; other workloads can differ.
+
+| Catalog / cache | One worker | Two workers | Four workers | Two-worker improvement |
+| --- | ---: | ---: | ---: | ---: |
+| Local / fresh | 266.2 s | 140.3 s | 75.3 s | 47.3% |
+| Local / warm | 266.2 s | 140.1 s | 73.7 s | 47.4% |
+| Composed / fresh | 262.1 s | 136.0 s | 70.1 s | 48.1% |
+| Composed / warm | 261.4 s | 135.8 s | 69.5 s | 48.0% |
+
+Composed scans exchanged about 0.60–0.62 MB of serialized bridge payloads per run. The existing incremental transport remains in place. A separate synthetic benchmark of the copying and aggregation helpers measured medians of 8.1 ms and 27.9 ms across all 500 result updates; those numbers exclude browser rendering and observation time. The benchmark reports a recommendation and does not change addon options.
+
 `test:browser` expects the demo at `http://127.0.0.1:6100/`. Start it with `pnpm exec storybook dev -p 6100 --ci --no-open`, or set `EXTERNALSSS_STORYBOOK_URL` to another URL. `EXTERNALSSS_TEST_MODE=full` runs only the full-scan browser case, which is useful for a static build served under a subpath.
 
-`test:browser:ci` starts the demo on port 6100, runs the complete browser suite, and stops the server. CI runs this alongside composition and compatibility checks. `check:complexity` enforces a maximum cyclomatic complexity of 10 for all production TypeScript, including demo stories.
+`test:browser:ci` starts the demo on port 6100, runs the complete browser suite at concurrency 1, 2, and 4, and stops the server. `test:composition` checks those same limits. Set `EXTERNALSSS_TEST_CONCURRENCY` to 1, 2, or 4 to run a single limit. CI runs these alongside compatibility checks. `check:complexity` enforces a maximum cyclomatic complexity of 10 for all production TypeScript, including demo stories.
 
 `test:composition` checks bridge trust, message validation, connection failures, and independent reports for catalogs with identical story IDs. It uses the built demo and port 6150.
 

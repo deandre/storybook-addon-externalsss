@@ -18,7 +18,7 @@ const target = {
 const session = {
   phase: 'running',
   retrying: false,
-  progress: { completed: 0, total: 1 },
+  progress: { completed: 0, total: 1, active: 0 },
   targets: [target],
   results: [{ storyId: target.id, status: 'complete', warnings: [], findings: [] }],
 };
@@ -79,9 +79,9 @@ describe('composed bridge', () => {
         'https://remote.test',
       ),
     ).toBe(false);
-    const running = { ...session, phase: 'running', retrying: false, progress: { completed: 0, total: 1 } };
+    const running = { ...session, phase: 'running', retrying: false, progress: { completed: 0, total: 1, active: 0 } };
     expect(isRemoteRunningSession(running, 'https://remote.test')).toBe(true);
-    expect(isRemoteRunningSession({ ...running, progress: { completed: 2, total: 1 } }, 'https://remote.test')).toBe(
+    expect(isRemoteRunningSession({ ...running, progress: { completed: 2, total: 1, active: 0 } }, 'https://remote.test')).toBe(
       false,
     );
     expect(
@@ -115,7 +115,7 @@ describe('strict bridge enums', () => {
     expect(isScanEvent({ type: 'finished', outcome: 'complete', unresolved: [] }, 'https://remote.test')).toBe(true);
     expect(
       isRemoteRunningSession(
-        { ...session, phase: ['running'], retrying: false, progress: { completed: 0, total: 1 } },
+        { ...session, phase: ['running'], retrying: false, progress: { completed: 0, total: 1, active: 0 } },
         'https://remote.test',
       ),
     ).toBe(false);
@@ -139,7 +139,7 @@ describe('lifecycle payload validation', () => {
       { completed: '0', total: 1 },
       { completed: 0, total: 1, current: [] },
     ])
-      expect(isScanEvent({ type: 'progress', progress }, 'https://remote.test')).toBe(false);
+      expect(isScanEvent({ type: 'progress', progress: { active: 0, ...progress } }, 'https://remote.test')).toBe(false);
   });
   it('validates every discriminated payload without coercion', () => {
     for (const event of [
@@ -154,10 +154,17 @@ describe('lifecycle payload validation', () => {
       },
       {
         type: 'started',
-        session: { ...session, phase: 'running', retrying: 'yes', progress: { completed: 0, total: 1 } },
+        session: { ...session, phase: 'running', retrying: 'yes', progress: { completed: 0, total: 1, active: 0 } },
         pendingStoryIds: [target.id],
       },
     ])
       expect(isScanEvent(event, 'https://remote.test')).toBe(false);
   });
+});
+
+it('validates active slots against bounds and remaining work', () => {
+  for (const active of [undefined, NaN, Infinity, -1, 1.5, '2', 5])
+    expect(isScanEvent({ type: 'progress', progress: { completed: 0, total: 10, active } }, 'https://remote.test')).toBe(false);
+  expect(isScanEvent({ type: 'progress', progress: { completed: 1, total: 2, active: 2 } }, 'https://remote.test')).toBe(false);
+  expect(isScanEvent({ type: 'progress', progress: { completed: 1, total: 5, active: 4 } }, 'https://remote.test')).toBe(true);
 });

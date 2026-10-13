@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildReport, replaceStoryResult, summarizeScan } from './report';
+import { buildReport, orderedStoryResults, summarizeScan } from './report';
 import type { StoryResult } from './model';
 
 describe('buildReport', () => {
@@ -90,14 +90,24 @@ describe('retry results', () => {
       storyId: 'two', status: 'unsupported', findings: [{ ...finding, labels: [...finding.labels] }], warnings: ['old warning'], error: 'old error',
     }];
     const recovered: StoryResult = { storyId: 'two', status: 'complete', findings: [], warnings: [] };
-    const updated = replaceStoryResult(previous, recovered);
+    const updated = orderedStoryResults(targets, previous, recovered);
     expect(updated).toEqual([complete, recovered]);
     expect(updated[0]).toBe(complete);
     expect(previous[1]?.warnings).toEqual(['old warning']);
     expect(buildReport(targets, updated, 'complete', 'now').summary).toMatchObject({ findings: 0, completeStories: 2, incompleteStories: 1 });
     expect(summarizeScan(targets, updated).incomplete.map(({ target }) => target.id)).toEqual(['three']);
-    const finished = replaceStoryResult(updated, { storyId: 'three', status: 'complete', findings: [], warnings: [] });
+    const finished = orderedStoryResults(targets, updated, { storyId: 'three', status: 'complete', findings: [], warnings: [] });
     expect(finished).toHaveLength(3);
     expect(summarizeScan(targets, finished).incomplete).toEqual([]);
   });
+});
+
+it('exports identical grouped reports for observations delivered in any order', () => {
+  const targets = ['one', 'two', 'three'].map((id) => ({ id, name: id }));
+  const results = targets.map(({ id }, index) => ({ storyId: id, status: 'complete' as const, warnings: [], findings: [{ key: 'shared', name: 'Shared resource', labels: ['mocking', 'external'] as const, notes: [`note ${2 - index}`, 'shared note'] }] }));
+  // Labels are mutable in the observation model.
+  const observations = results.map((r) => ({ ...r, findings: r.findings.map((f) => ({ ...f, labels: [...f.labels] })) }));
+  const report = buildReport(targets, observations, 'complete', 'fixed');
+  expect(buildReport(targets, [...observations].reverse(), 'complete', 'fixed')).toEqual(report);
+  expect(report.findings[0]?.affectedStories.map(({ id }) => id)).toEqual(['one', 'two', 'three']);
 });

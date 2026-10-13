@@ -1,5 +1,6 @@
 import { RUN_QUERY_PARAM } from './protocol';
-import { replaceStoryResult } from './report';
+import { orderedStoryResults } from './report';
+import { scanConcurrency, type ScanConcurrency } from './scan-options';
 import {
   canRetry,
   createRunId,
@@ -18,12 +19,16 @@ interface Execution {
   session: RunningSession;
   pending: StoryTarget[];
   awaiting: Set<string>;
+  active: Map<string, string>;
+  concurrency: ScanConcurrency;
 }
 
 export function createScanController(
   getTargets: (runId: string) => StoryTarget[],
   observe: (target: StoryTarget, runId: string, signal: AbortSignal) => Promise<StoryResult>,
+  options: { scanConcurrency?: ScanConcurrency } = {},
 ) {
+  const concurrency = scanConcurrency(options.scanConcurrency);
   let session: ScanSession = { phase: 'idle' };
   let execution: Execution | undefined;
   const listeners = new Set<() => void>();
@@ -34,23 +39,22 @@ export function createScanController(
     eventListeners.forEach((listener) => listener(event));
     listeners.forEach((listener) => listener());
   };
-  const progress = (current: Execution, name?: string) => {
-    current.session = {
-      ...current.session,
-      progress: {
-        completed: current.pending.length - current.awaiting.size,
-        total: current.pending.length,
-        current: name,
-      },
-    };
+  const runProgress = (current: Execution) => ({
+    completed: current.pending.length - current.awaiting.size,
+    total: current.pending.length,
+    active: current.active.size,
+    current: current.active.size === 1 ? current.active.values().next().value : undefined,
+  });
+  const progress = (current: Execution) => {
+    current.session = { ...current.session, progress: runProgress(current) };
     publish(current.session, { type: 'progress', progress: current.session.progress });
   };
   const recordResult = (current: Execution, result: StoryResult) => {
     current.awaiting.delete(result.storyId);
     current.session = {
       ...current.session,
-      results: replaceStoryResult(current.session.results, result),
-      progress: { completed: current.pending.length - current.awaiting.size, total: current.pending.length },
+      results: orderedStoryResults(current.session.targets, current.session.results, result),
+      progress: runProgress(current),
     };
     publish(current.session, { type: 'result', result, progress: current.session.progress });
   };
@@ -72,22 +76,43 @@ export function createScanController(
       ? incompleteTargets(current.session.targets, current.session.results)
       : current.session.targets;
     current.awaiting = new Set(current.pending.map((target) => target.id));
-    current.session = { ...current.session, progress: { completed: 0, total: current.pending.length } };
+    current.session = { ...current.session, progress: { completed: 0, total: current.pending.length, active: 0 } };
     publish(current.session, { type: 'started', session: current.session, pendingStoryIds: [...current.awaiting] });
   };
-  const execute = async (current: Execution) => {
-    for (const target of current.pending) {
-      if (execution !== current || current.abort.signal.aborted) break;
-      progress(current, target.name);
-      if (execution !== current) return;
+  const observeTarget = async (current: Execution, target: StoryTarget) => {
+    current.active.set(target.id, target.name);
+    try {
+      progress(current);
+      if (execution !== current || current.abort.signal.aborted) return;
       const preview = new URL(target.previewHref);
       preview.searchParams.set(RUN_QUERY_PARAM, current.runId);
       const result = await observe({ ...target, previewHref: preview.href }, current.runId, current.abort.signal);
+      current.active.delete(target.id);
       if (execution !== current) return;
+      if (result.storyId !== target.id) throw new Error('Unexpected story scan result.');
       recordResult(current, result);
-      if (result.status === 'cancelled') break;
+      if (result.status === 'cancelled') current.abort.abort();
+    } finally {
+      current.active.delete(target.id);
     }
-    finish(current, current.abort.signal.aborted ? 'cancelled' : 'complete');
+  };
+  const execute = async (current: Execution) => {
+    let next = 0;
+    let failure: string | undefined;
+    const worker = async () => {
+      while (execution === current && !current.abort.signal.aborted && next < current.pending.length) {
+        const target = current.pending[next++]!;
+        try {
+          await observeTarget(current, target);
+        } catch (error) {
+          failure ??= error instanceof Error ? error.message : 'The scan stopped unexpectedly.';
+          current.abort.abort();
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(current.concurrency, current.pending.length) }, worker));
+    if (failure !== undefined) finish(current, 'error', failure);
+    else finish(current, current.abort.signal.aborted ? 'cancelled' : 'complete');
   };
   const run = async (retrying = false) => {
     if (execution || (retrying && !canRetry(session))) return;
@@ -101,6 +126,8 @@ export function createScanController(
       session: initial,
       pending: [],
       awaiting: new Set(),
+      active: new Map(),
+      concurrency,
     };
     execution = current;
     try {

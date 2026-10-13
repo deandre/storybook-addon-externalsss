@@ -38,8 +38,8 @@ function runningStatus(session: RunningSession, remote: boolean): Text {
     title:
       session.progress.total === 0 && remote
         ? 'Connecting to catalog'
-        : `${operation} ${Math.min(session.progress.completed + 1, session.progress.total)} of ${session.progress.total}`,
-    detail: session.progress.current ?? '',
+        : `${operation}: ${session.progress.completed} of ${session.progress.total} completed · ${session.progress.active} active`,
+    detail: session.progress.active === 1 ? session.progress.current ?? '' : '',
   };
 }
 function stoppedDetail(session: Extract<ScanSession, { phase: 'finished' }>) {

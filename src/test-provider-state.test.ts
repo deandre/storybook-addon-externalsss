@@ -20,7 +20,7 @@ describe('resource statuses', () => {
     expect(resourceStatus('one', { ...clean, findings: [{ ...findings[0]!, labels: ['mocking'] }] }).value).toBe('status-value:warning');
   });
   it('connects Run All and Clear and clears only the scoped store', async () => {
-    const controller = createScanController(() => [], vi.fn());
+    const controller = createScanController(() => [], vi.fn(), { scanConcurrency: 1 });
     let run!: () => void; let clear!: () => void;
     const provider = { testProviderId: 'test', getState: vi.fn(), setState: vi.fn(), runWithState: vi.fn(), settingsChanged: vi.fn(), onRunAll: vi.fn((listener) => { run = listener; return vi.fn(); }), onClearAll: vi.fn((listener) => { clear = listener; return vi.fn(); }) };
     const statuses = { typeId: 'resources', getAll: vi.fn(), set: vi.fn(), unset: vi.fn(), onSelect: vi.fn(), onAllStatusChange: vi.fn() };
@@ -34,7 +34,7 @@ describe('resource statuses', () => {
     const targets = ['one', 'two', 'three'].map((id) => ({ id, name: id, previewHref: 'https://test.test/iframe.html', managerHref: 'https://test.test/' }));
     const observe = vi.fn().mockResolvedValueOnce(clean).mockResolvedValueOnce({ ...clean, storyId: 'two', status: 'timeout' }).mockResolvedValueOnce({ ...clean, storyId: 'three', status: 'timeout' })
       .mockImplementation(() => new Promise<StoryResult>((resolve) => { finish = resolve; }));
-    const controller = createScanController(() => targets, observe);
+    const controller = createScanController(() => targets, observe, { scanConcurrency: 1 });
     const provider = { testProviderId: 'test', getState: vi.fn(), setState: vi.fn(), runWithState: vi.fn(), settingsChanged: vi.fn(), onRunAll: vi.fn(() => vi.fn()), onClearAll: vi.fn(() => vi.fn()) };
     const statuses = { typeId: 'resources', getAll: vi.fn(), set: vi.fn(), unset: vi.fn(), onSelect: vi.fn(), onAllStatusChange: vi.fn() };
     connectTestProvider(controller, provider, statuses);
@@ -53,7 +53,7 @@ describe('resource statuses', () => {
   it('skips progress-only writes and publishes just the newly observed story', async () => {
     const targets = ['one', 'two'].map((id) => ({ id, name: id, previewHref: 'https://test.test/iframe.html', managerHref: 'https://test.test/' }));
     const finishes: ((value: StoryResult) => void)[] = [];
-    const controller = createScanController(() => targets, () => new Promise((resolve) => finishes.push(resolve)));
+    const controller = createScanController(() => targets, () => new Promise((resolve) => finishes.push(resolve)), { scanConcurrency: 1 });
     const provider = { testProviderId: 'test', getState: vi.fn(), setState: vi.fn(), runWithState: vi.fn(), settingsChanged: vi.fn(), onRunAll: vi.fn(() => vi.fn()), onClearAll: vi.fn(() => vi.fn()) };
     const statuses = { typeId: 'resources', getAll: vi.fn(), set: vi.fn(), unset: vi.fn(), onSelect: vi.fn(), onAllStatusChange: vi.fn() };
     connectTestProvider(controller, provider, statuses);
@@ -61,7 +61,7 @@ describe('resource statuses', () => {
     expect(statuses.set).toHaveBeenCalledTimes(1);
     expect(statuses.set.mock.lastCall?.[0].map((status: { value: string }) => status.value)).toEqual(['status-value:pending', 'status-value:pending']);
     expect(provider.setState).toHaveBeenCalledTimes(1);
-    finishes[0]!(clean); await Promise.resolve();
+    finishes[0]!(clean); await vi.waitFor(() => expect(finishes).toHaveLength(2));
     expect(statuses.set).toHaveBeenCalledTimes(2);
     expect(statuses.set).toHaveBeenLastCalledWith([resourceStatus('one', clean)]);
     expect(provider.setState).toHaveBeenCalledTimes(1);
@@ -72,7 +72,7 @@ describe('resource statuses', () => {
   });
   it('marks unvisited stories unknown at the end of an interrupted run', async () => {
     const targets = ['one', 'two'].map((id) => ({ id, name: id, previewHref: 'https://test.test/iframe.html', managerHref: 'https://test.test/' }));
-    const controller = createScanController(() => targets, async () => { throw new Error('scanner failed'); });
+    const controller = createScanController(() => targets, async () => { throw new Error('scanner failed'); }, { scanConcurrency: 1 });
     const provider = { testProviderId: 'test', getState: vi.fn(), setState: vi.fn(), runWithState: vi.fn(), settingsChanged: vi.fn(), onRunAll: vi.fn(() => vi.fn()), onClearAll: vi.fn(() => vi.fn()) };
     const statuses = { typeId: 'resources', getAll: vi.fn(), set: vi.fn(), unset: vi.fn(), onSelect: vi.fn(), onAllStatusChange: vi.fn() };
     connectTestProvider(controller, provider, statuses);
@@ -94,8 +94,8 @@ describe('provider attachment', () => {
   it('hydrates a running scan, then writes only subsequent observations', async () => {
     const targets = ['one', 'two'].map((id) => ({ id, name: id, previewHref: 'https://test.test/iframe.html', managerHref: 'https://test.test/' }));
     let finish!: (result: StoryResult) => void;
-    const controller = createScanController(() => targets, vi.fn().mockResolvedValueOnce(clean).mockImplementation(() => new Promise<StoryResult>((resolve) => { finish = resolve; })));
-    const run = controller.run(); await Promise.resolve();
+    const controller = createScanController(() => targets, vi.fn().mockResolvedValueOnce(clean).mockImplementation(() => new Promise<StoryResult>((resolve) => { finish = resolve; })), { scanConcurrency: 1 });
+    const run = controller.run(); await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
     const { provider, statuses, stops } = stores();
     const connection = connectTestProvider(controller, provider, statuses);
     expect(statuses.set).toHaveBeenLastCalledWith([resourceStatus('one', clean), resourceStatus('two', undefined, true)]);
@@ -108,7 +108,7 @@ describe('provider attachment', () => {
   });
   it('hydrates a finished scan including unvisited stories', async () => {
     const targets = ['one', 'two'].map((id) => ({ id, name: id, previewHref: 'https://test.test/iframe.html', managerHref: 'https://test.test/' }));
-    const controller = createScanController(() => targets, async () => { throw new Error('failed'); });
+    const controller = createScanController(() => targets, async () => { throw new Error('failed'); }, { scanConcurrency: 1 });
     await controller.run();
     const { provider, statuses } = stores();
     const connection = connectTestProvider(controller, provider, statuses);

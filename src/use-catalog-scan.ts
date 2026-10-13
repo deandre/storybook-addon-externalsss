@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { useStorybookState, type API } from 'storybook/manager-api';
 import { createScanController, type ScanController } from './scan-controller';
+import { configuredScanConcurrency } from './scan-options';
 import { scanStory } from './scan-story';
 import { getStoryTargets } from './storybook-compat';
 export { createRunId, type ScanSession } from './scan';
@@ -10,7 +11,7 @@ const controllers = new WeakMap<API, { controller: ScanController; index?: Retur
 export function getCatalogScanController(api: API) {
   let entry = controllers.get(api);
   if (!entry) {
-    const controller = createScanController((runId) => getStoryTargets(api, runId, { index: controllers.get(api)?.index }), scanStory);
+    const controller = createScanController((runId) => getStoryTargets(api, runId, { index: controllers.get(api)?.index }), scanStory, { scanConcurrency: configuredScanConcurrency() });
     entry = { controller };
     controllers.set(api, entry);
   }
