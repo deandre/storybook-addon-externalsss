@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { API } from 'storybook/manager-api';
-import { getStoryTargets } from './storybook-compat';
+import { getStoryTargets, getComposedCatalogs } from './storybook-compat';
 
 const index: NonNullable<ReturnType<API['getIndex']>> = {
   v: 5,
@@ -85,5 +85,19 @@ describe('Storybook catalog compatibility', () => {
   it('reports a loading catalog instead of silently scanning an empty or stale index', () => {
     expect(() => getStoryTargets({ getUrlState }, 'run', { locationHref })).toThrow('still loading');
     expect(() => getStoryTargets({ getIndex: () => undefined, getUrlState }, 'run', { index, locationHref })).toThrow('still loading');
+  });
+});
+
+describe('composed catalog discovery', () => {
+  it('normalizes subpaths and distinguishes ready, loading, inaccessible and invalid refs', () => {
+    const catalogs = getComposedCatalogs({
+      ready: { title: 'Design system', url: '../design/', internal_index: { entries: {} } },
+      loading: { url: 'https://remote.test/' },
+      error: { url: 'https://remote.test/', indexError: { message: 'Unavailable' }, internal_index: {} },
+      login: { url: 'https://private.test/', loginUrl: 'https://login.test/' },
+      invalid: { url: 'javascript:alert(1)', internal_index: {} },
+    }, 'https://host.test/catalog/');
+    expect(catalogs[0]).toEqual({ refId: 'ready', title: 'Design system', url: 'https://host.test/design/', status: 'ready' });
+    expect(catalogs.map(({ status }) => status)).toEqual(['ready', 'loading', 'unavailable', 'unavailable', 'unavailable']);
   });
 });

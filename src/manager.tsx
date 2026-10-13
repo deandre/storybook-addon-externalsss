@@ -1,14 +1,18 @@
 import React, { useMemo, useState } from 'react';
-import { addons, types, type API } from 'storybook/manager-api';
+import { addons, types, useStorybookState, type API } from 'storybook/manager-api';
 import { AddonPanel } from 'storybook/internal/components';
 import { useTheme, type StorybookTheme } from 'storybook/theming';
 import type { FindingLabel, StoryResult } from './model';
 import { panelStyles } from './panel-styles';
 import { buildReport, summarizeScan } from './report';
 import { useCatalogScan } from './use-catalog-scan';
+import { useRemoteScan, type Catalog } from './use-remote-scan';
+import { getComposedCatalogs } from './storybook-compat';
+import { RemoteBridge } from './remote-bridge';
+import { BRIDGE_QUERY, BRIDGE_PATH, PANEL_ID } from './bridge-protocol';
 
 const ADDON_ID = 'storybook-addon-externalsss';
-const PANEL_ID = `${ADDON_ID}/panel`;
+
 
 const palette = {
   failure: 'Load failure',
@@ -65,7 +69,14 @@ function themeVariables(theme: StorybookTheme): React.CSSProperties {
 
 function ExternalsssPanel({ api, active }: { api: API; active: boolean }) {
   const theme = useTheme() as StorybookTheme;
-  const { session, run, retry, cancel } = useCatalogScan(api);
+  const { refs } = useStorybookState();
+  const [refId, setRefId] = useState('');
+  const catalogs = getComposedCatalogs(refs);
+  const selected = catalogs.find((item) => item.refId === refId);
+  const catalog: Catalog | undefined = selected?.url ? { refId, title: selected.title, url: selected.url } : undefined;
+  const local = useCatalogScan(api);
+  const remote = useRemoteScan(catalog);
+  const { session, run, retry, cancel } = refId ? remote : local;
   const [filter, setFilter] = useState<Filter>('all');
   const targets = session.phase === 'idle' ? [] : session.targets;
   const results = session.phase === 'idle' ? [] : session.results;
@@ -87,19 +98,19 @@ function ExternalsssPanel({ api, active }: { api: API; active: boolean }) {
   const showIncomplete = filter === 'all' || filter === 'incomplete';
   const hasVisibleResults = visibleGroups.length > 0 || (showIncomplete && incomplete.length > 0);
   const status = running
-    ? { title: `${session.retrying ? 'Retrying' : 'Scanning'} ${Math.min(session.progress.completed + 1, session.progress.total)} of ${session.progress.total}`, detail: session.progress.current ?? '' }
+    ? { title: session.progress.total === 0 && refId ? 'Connecting to catalog' : `${session.retrying ? 'Retrying' : 'Scanning'} ${Math.min(session.progress.completed + 1, session.progress.total)} of ${session.progress.total}`, detail: session.progress.current ?? '' }
     : runState === 'cancelled'
       ? { title: 'Scan cancelled', detail: `${completedCount} of ${targets.length} stories checked. Results are partial.` }
       : runState === 'error'
-        ? { title: 'Scan stopped', detail: targets.length ? 'Results are partial. Retry incomplete stories or start a new scan.' : 'The scan could not start. Run it again to retry.' }
+        ? { title: 'Scan stopped', detail: session.phase === 'finished' && session.restartRequired ? 'Results are partial. Start a new scan to reconnect.' : targets.length ? 'Results are partial. Retry incomplete stories or start a new scan.' : 'The scan could not start. Run it again to retry.' }
         : runState === 'complete'
           ? { title: incomplete.length ? 'Scan finished with gaps' : 'Scan complete', detail: `${completedCount} ${completedCount === 1 ? 'story' : 'stories'} checked${incomplete.length ? ` · ${incomplete.length} incomplete` : ''}.` }
-          : { title: 'Ready to scan', detail: 'Check every local story without changing the Canvas.' };
+          : { title: 'Ready to scan', detail: 'Check the selected catalog without changing the Canvas.' };
 
   const downloadReport = () => {
     if (session.phase !== 'finished' || targets.length === 0) return;
     const generatedAt = new Date().toISOString();
-    const report = buildReport(targets, results, session.outcome, generatedAt);
+    const report = buildReport(targets, results, session.outcome, generatedAt, catalog);
     const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
     const link = document.createElement('a');
     link.href = url;
@@ -114,14 +125,20 @@ function ExternalsssPanel({ api, active }: { api: API; active: boolean }) {
   return (
     <div className="externalsss" style={themeVariables(theme)}>
       <style>{panelStyles}</style>
+      {Object.keys(refs).length > 0 && <label className="ext-toolbar">Catalog
+        <select className="ext-filter-select" style={{ display: 'block' }} aria-label="Catalog" value={refId} disabled={running} onChange={(event) => { setRefId(event.target.value); setFilter('all'); }}>
+          <option value="">Local</option>
+          {catalogs.map((item) => <option key={item.refId} value={item.refId} disabled={item.status !== 'ready'}>{item.title}{item.status !== 'ready' ? ` (${item.status})` : ''}</option>)}
+        </select>
+      </label>}
       <header className="ext-header">
         <div className="ext-heading">
           <h2>Externalsss</h2>
           <p>Resource stability audit</p>
         </div>
         <div className="ext-actions">
-          <button type="button" className="ext-button ext-button--primary" onClick={() => { setFilter('all'); void run(); }} disabled={running}>{running ? 'Scanning…' : runState === 'idle' ? 'Run scan' : 'Scan again'}</button>
-          {!running && session.phase === 'finished' && incomplete.length > 0 && <button type="button" className="ext-button" onClick={() => { setFilter('all'); void retry(); }}>Retry incomplete</button>}
+          <button type="button" className="ext-button ext-button--primary" onClick={() => { setFilter('all'); void run(); }} disabled={running || !!refId && (!catalog || selected?.status !== 'ready')}>{running ? 'Scanning…' : runState === 'idle' ? 'Run scan' : 'Scan again'}</button>
+          {!running && session.phase === 'finished' && incomplete.length > 0 && !session.restartRequired && <button type="button" className="ext-button" onClick={() => { setFilter('all'); void retry(); }}>Retry incomplete</button>}
           {running && <button type="button" className="ext-button" onClick={cancel}>Cancel</button>}
           {!running && runState !== 'idle' && targets.length > 0 && <button type="button" className="ext-button" onClick={downloadReport}>Download JSON</button>}
         </div>
@@ -151,7 +168,7 @@ function ExternalsssPanel({ api, active }: { api: API; active: boolean }) {
             </summary>
             <div className="ext-detail">
               <p>The scan stopped before these stories were reached.</p>
-              <ul>{unvisited.map(({ target }) => <li key={target.id}><a href={target.managerHref}>{target.name}</a></li>)}</ul>
+              <ul>{unvisited.map(({ target }) => <li key={target.id}><a href={target.managerHref} target={refId ? '_blank' : undefined} rel={refId ? 'noreferrer' : undefined}>{target.name}</a></li>)}</ul>
             </div>
           </details>}
           {observedIncomplete.map(({ target, result, status: storyStatus }) => <details className="ext-row" key={target.id}>
@@ -164,7 +181,7 @@ function ExternalsssPanel({ api, active }: { api: API; active: boolean }) {
             <div className="ext-detail">
               <p>{result?.error ?? 'The observation did not complete.'}</p>
               {result?.warnings.map((warning) => <p key={warning}>{warning}</p>)}
-              <a href={target.managerHref}>Open story</a>
+              <a href={target.managerHref} target={refId ? '_blank' : undefined} rel={refId ? 'noreferrer' : undefined}>Open story</a>
             </div>
           </details>)}
         </section>}
@@ -190,7 +207,7 @@ function ExternalsssPanel({ api, active }: { api: API; active: boolean }) {
                   </div>
                   <div>
                     <h3>Affected stories</h3>
-                    <ul>{storyIds.map((id) => <li key={id}><a href={targetById.get(id)?.managerHref}>{targetById.get(id)?.name ?? id}</a></li>)}</ul>
+                    <ul>{storyIds.map((id) => <li key={id}><a href={targetById.get(id)?.managerHref} target={refId ? '_blank' : undefined} rel={refId ? 'noreferrer' : undefined}>{targetById.get(id)?.name ?? id}</a></li>)}</ul>
                   </div>
                 </div>
               </div>
@@ -211,9 +228,17 @@ function ExternalsssPanel({ api, active }: { api: API; active: boolean }) {
 }
 
 addons.register(ADDON_ID, (api) => {
+  const bridgeId = new URLSearchParams(window.location.search).get(BRIDGE_QUERY);
+  if (bridgeId) {
+    addons.add(`${ADDON_ID}/bridge`, { type: types.experimental_PAGE, title: 'Externalsss', url: BRIDGE_PATH,
+      render: () => <RemoteBridge api={api} bridgeId={bridgeId} /> });
+    queueMicrotask(() => api.setSelectedPanel(PANEL_ID));
+  }
   addons.add(PANEL_ID, {
     type: types.PANEL,
     title: 'Externalsss',
-    render: ({ active }) => <AddonPanel active={Boolean(active)} hasScrollbar={false}><ExternalsssPanel api={api} active={Boolean(active)} /></AddonPanel>,
+    render: ({ active }) => bridgeId
+      ? null
+      : <AddonPanel active={Boolean(active)} hasScrollbar={false}><ExternalsssPanel api={api} active={Boolean(active)} /></AddonPanel>,
   });
 });

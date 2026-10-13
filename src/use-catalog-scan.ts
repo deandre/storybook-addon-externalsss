@@ -11,9 +11,9 @@ const STORY_LIMIT_MS = 15000;
 export type ScanSession =
   | { phase: 'idle' }
   | { phase: 'running'; targets: StoryTarget[]; results: StoryResult[]; retrying: boolean; progress: { completed: number; total: number; current?: string } }
-  | { phase: 'finished'; outcome: ScanState; targets: StoryTarget[]; results: StoryResult[]; error?: string };
+  | { phase: 'finished'; outcome: ScanState; targets: StoryTarget[]; results: StoryResult[]; error?: string; restartRequired?: boolean };
 
-function createRunId(): string {
+export function createRunId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 

@@ -24,6 +24,7 @@ const run = (command, args, cwd = root) => execFileSync(command, args, {
 });
 
 run('pnpm', ['exec', 'tsup']);
+run('pnpm', ['build-storybook']);
 const packed = JSON.parse(execFileSync('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', work], { cwd: root, encoding: 'utf8' }));
 const tarball = join(work, packed[0].filename);
 const manager = execFileSync('tar', ['-xOf', tarball, 'package/dist/manager.js'], { encoding: 'utf8' });
@@ -36,8 +37,8 @@ assert.equal(metadata.peerDependencies.storybook, '^9.0.0 || ^10.0.0');
 assert.equal(metadata.engines.node, '>=20.19.0');
 console.log('PASS packed manager uses external React without JSX runtime or React peer');
 
-async function listen(server) {
-  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+async function listen(server, port = 0) {
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });
   return `http://127.0.0.1:${server.address().port}`;
 }
 
@@ -51,18 +52,21 @@ async function waitForServer(url, child) {
   throw new Error(`Storybook did not become ready: ${url}`);
 }
 
-async function staticServer(directory) {
+async function staticServer(directory, port = 0, composedDirectory) {
   const server = createServer(async (request, response) => {
     try {
       const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname).replace(/^\/(catalog|preview)\//, '/');
-      const path = resolve(directory, `.${pathname.endsWith('/') ? `${pathname}index.html` : pathname}`);
-      assert(path.startsWith(`${directory}/`));
+      const base = composedDirectory && pathname.startsWith('/remote/') ? composedDirectory : directory;
+      const servedPath = base === composedDirectory ? pathname.replace(/^\/remote/, '') : pathname;
+      const path = resolve(base, `.${servedPath.endsWith('/') ? `${servedPath}index.html` : servedPath}`);
+      assert(path.startsWith(`${base}/`));
       const extension = path.split('.').at(-1);
+      response.setHeader('Access-Control-Allow-Origin', '*');
       response.setHeader('Content-Type', ({ html: 'text/html', js: 'text/javascript', css: 'text/css', json: 'application/json', svg: 'image/svg+xml' })[extension] ?? 'application/octet-stream');
       response.end(await readFile(path));
     } catch { response.writeHead(404); response.end(); }
   });
-  return { server, origin: await listen(server) };
+  return { server, origin: await listen(server, port) };
 }
 
 async function smoke(browser, base, customPreview, reactHost) {
@@ -157,6 +161,8 @@ async function reportOriginCheck(browser, base) {
     await page.goto(new URL('embed-test.html', base).href);
     await page.waitForFunction(() => window.reports.length > 0);
     assert.equal(await page.evaluate(() => window.reports[0].status), 'complete');
+    await page.waitForTimeout(200);
+    assert.equal(await page.evaluate(() => window.reports.length), 1, 'preview instrumentation loaded more than once');
     assert(await page.evaluate(() => window.reports[0].observation.resources.some(({ url }) => url.includes('fixture.json'))));
 
     // A foreign parent can set scan IDs and disable Storybook's instrumenter,
@@ -172,6 +178,93 @@ async function reportOriginCheck(browser, base) {
   }
 }
 
+
+async function composedScan(browser, source, composedDirectory) {
+  const host = await staticServer(join(root, 'storybook-static'), 6150, composedDirectory);
+  if (composedDirectory) source = `${host.origin}/remote/`;
+  const page = await browser.newPage();
+  const errors = [];
+  const scanUrls = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.searchParams.has('externalsssRun')) scanUrls.push(url);
+  });
+  await page.route('**/fixture.json*', (route) => route.fulfill({ json: { ok: true } }));
+  await page.addInitScript(({ host, source }) => {
+    if (location.origin !== host || new URLSearchParams(location.search).has('externalsssBridge')) return;
+    // Supply refs before Storybook's manager starts; the actual index loading,
+    // composition state, selector and bridge all run normally.
+    Object.defineProperty(window, 'REFS', { configurable: true, get: () => ({
+      remote: { id: 'remote', title: 'Remote catalog', url: source.replace(/\/$/, ''), type: 'server-checked' },
+      missing: { id: 'missing', title: 'Unavailable catalog', url: `${host}/missing-catalog`, type: 'unknown' },
+    }), set() {} });
+  }, { host: host.origin, source });
+  const download = async () => {
+    const event = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Download JSON' }).click();
+    return JSON.parse(await readFile(await (await event).path(), 'utf8'));
+  };
+  try {
+    await page.goto(`${host.origin}/?path=/story/externalsss-demo-resources--clean-image&globals=theme:dark`);
+    await page.getByRole('tab', { name: 'Externalsss' }).click();
+    await page.waitForFunction(() => {
+      const option = document.querySelector('select[aria-label="Catalog"] option[value="remote"]');
+      return option && !option.disabled;
+    });
+    await page.waitForFunction(() => document.querySelector('select[aria-label="Catalog"] option[value="missing"]')?.disabled);
+    await page.getByRole('combobox', { name: 'Catalog' }).selectOption('remote');
+    const canvas = await page.locator('#storybook-preview-iframe').getAttribute('src');
+    const managerUrl = page.url();
+    await page.getByRole('button', { name: 'Run scan' }).click();
+    await page.waitForSelector('iframe[title^="Externalsss remote scan"]');
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await page.getByRole('status').filter({ hasText: 'Scan cancelled' }).waitFor({ timeout: 35000 });
+    // Cancellation during connection tears down the bridge. Starting again
+    // must establish a fresh connection, then retain it for later retries.
+    await page.getByRole('button', { name: 'Scan again' }).click();
+    await page.getByRole('status').filter({ hasText: 'Scanning 1 of 3' }).waitFor({ timeout: 35000 });
+    assert(await page.getByRole('combobox', { name: 'Catalog' }).isDisabled());
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await page.getByRole('status').filter({ hasText: 'Scan cancelled' }).waitFor();
+    const partial = await download();
+    assert.equal(partial.summary.totalStories, 3);
+    assert.equal(partial.catalog.refId, 'remote');
+    const configured = new URL(source.replace(/\/$/, ''));
+    assert.equal(partial.catalog.url, configured.origin + configured.pathname);
+    assert(partial.stories.some((story) => story.status !== 'complete'));
+    scanUrls.length = 0;
+    await page.getByRole('button', { name: 'Retry incomplete' }).click();
+    await page.getByRole('status').filter({ hasText: 'Scan complete' }).waitFor({ timeout: 35000 });
+    const report = await download();
+    assert.equal(report.summary.completeStories, 3);
+    assert(report.stories.every((story) => story.id.startsWith('compatibility--')));
+    assert(scanUrls.length > 0);
+    assert(scanUrls.every((url) => !url.searchParams.has('globals') || url.searchParams.get('globals') !== 'theme:dark'));
+    assert.equal(page.url(), managerUrl);
+    assert.equal(await page.locator('#storybook-preview-iframe').getAttribute('src'), canvas);
+    assert(await page.locator('iframe[title^="Externalsss remote scan"]').count() === 1);
+    await page.getByRole('combobox', { name: 'Catalog' }).selectOption('');
+    await page.waitForSelector('iframe[title^="Externalsss remote scan"]', { state: 'detached' });
+    assert.deepEqual(errors, []);
+    console.log('PASS composed remote: handshake, nested-ref exclusion, remote defaults, cancellation, retry, provenance, Canvas isolation');
+  } catch (error) {
+    console.error('Composition browser errors:', errors);
+    console.error('Scan URLs:', scanUrls.map(String));
+    for (const frame of page.frames()) {
+      console.error('Frame:', frame.url());
+      try { console.error((await frame.locator('body').innerText({ timeout: 1000 })).slice(0, 800)); } catch {}
+    }
+    console.error('Refs:', await page.evaluate(() => window.REFS));
+    console.error(await page.locator('body').innerText());
+    throw error;
+  } finally {
+    await page.close();
+    host.server.closeAllConnections();
+    await new Promise((resolve) => host.server.close(resolve));
+  }
+}
+
 const browser = await chromium.launch({ headless: true });
 try {
   for (const fixture of cases.filter(({ name }) => !selected || name === selected)) {
@@ -183,7 +276,7 @@ try {
     else dependencies.vue = '3.5.24';
     if (fixture.framework.endsWith('vite')) dependencies.vite = '6.3.6';
     await writeFile(join(directory, 'package.json'), JSON.stringify({ private: true, type: 'module', dependencies }));
-    await writeFile(join(directory, '.storybook/main.js'), `export default { stories: ['../*.stories.js'], addons: ['storybook-addon-externalsss'], framework: '@storybook/${fixture.framework}' };`);
+    await writeFile(join(directory, '.storybook/main.js'), `export default { stories: ['../*.stories.js'], addons: [{ name: 'storybook-addon-externalsss', options: { trustedManagerOrigins: ['http://127.0.0.1:6150'] } }], framework: '@storybook/${fixture.framework}', refs: { nested: { title: 'Nested', url: 'http://127.0.0.1:6150' } } };`);
     await writeFile(join(directory, '.storybook/preview.js'), `export default { initialGlobals: { theme: 'light' }, globalTypes: { theme: { toolbar: { items: ['light', 'dark'] } } } };`);
     const render = fixture.react
       ? `import React from 'react';\nconst render = (args, { globals }) => React.createElement('div', null, args.label + ' ' + globals.theme);`
@@ -213,7 +306,7 @@ export const Third = {};
     const child = spawn(process.execPath, [storybookBin, 'dev', '-p', new URL(origin).port, '--ci', '--no-open'], {
       cwd: directory, stdio: 'inherit', env: { ...process.env, STORYBOOK_DISABLE_TELEMETRY: '1' },
     });
-    try { await waitForServer(origin, child); await smoke(browser, `${origin}/`, undefined, Boolean(fixture.react)); }
+    try { await waitForServer(origin, child); await smoke(browser, `${origin}/`, undefined, Boolean(fixture.react)); await composedScan(browser, `${origin}/`); }
     finally {
       child.kill('SIGTERM');
       if (child.exitCode === null) await new Promise((resolve) => child.once('exit', resolve));
@@ -223,6 +316,10 @@ export const Third = {};
     try {
       await smoke(browser, `${hosted.origin}/catalog/`, `${hosted.origin}/preview/iframe.html?token=a%26b`, Boolean(fixture.react));
       await reportOriginCheck(browser, `${hosted.origin}/catalog/`);
+      await composedScan(browser, `${hosted.origin}/catalog/`);
+      await composedScan(browser, '', join(directory, 'storybook-static'));
+      if (fixture.version.startsWith('9.')) execFileSync(process.execPath, [join(root, 'scripts/composition-security-test.mjs')], { cwd: root, stdio: 'inherit', env: { ...process.env,
+        EXTERNALSSS_COMPOSITION_HOST_DIR: join(directory, 'storybook-static'), EXTERNALSSS_COMPOSITION_HOST_STORY: 'compatibility--first' } });
     }
     finally { hosted.server.closeAllConnections(); await new Promise((resolve) => hosted.server.close(resolve)); }
     console.log(`PASS ${fixture.name}: dev + static subpath/custom preview, scan, cancel, globals, Canvas isolation, JSON, no browser errors, report origin isolation`);

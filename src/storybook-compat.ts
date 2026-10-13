@@ -21,7 +21,7 @@ export function getStoryTargets(
   const index = typeof api.getIndex === 'function' ? api.getIndex() : fallbackIndex;
   if (!index) throw new Error('Storybook is still loading the story index. Try again shortly.');
   const customParams = api.getUrlState().queryParams;
-  const reservedParams = ['args', 'id', 'viewMode', 'refId', 'path', 'embed', 'freeze', RUN_QUERY_PARAM, STORY_QUERY_PARAM];
+  const reservedParams = ['args', 'id', 'viewMode', 'refId', 'path', 'embed', 'freeze', 'addonPanel', 'externalsssBridge', RUN_QUERY_PARAM, STORY_QUERY_PARAM];
   const inheritedParams = Object.fromEntries(Object.entries(customParams ?? {})
     .filter(([key, value]) => value !== undefined && key !== 'globals' && !reservedParams.includes(key))) as Record<string, string>;
 
@@ -77,5 +77,21 @@ export function getStoryTargets(
       previewHref: preview.href,
       managerHref: manager.href,
     };
+  });
+}
+
+/** Composition indexes are loaded by Storybook, including its auth/error handling. */
+export function getComposedCatalogs(
+  refs: Record<string, { title?: string; url?: string; internal_index?: unknown; indexError?: unknown; loginUrl?: string }>,
+  locationHref = window.location.href,
+) {
+  return Object.entries(refs).map(([refId, ref]) => {
+    let url: string | undefined;
+    try {
+      const parsed = new URL(ref.url ?? '', locationHref);
+      if (ref.url && ['http:', 'https:'].includes(parsed.protocol)) url = parsed.href;
+    } catch { /* Invalid ref URLs remain unavailable instead of breaking the panel. */ }
+    const status = !url || ref.indexError || ref.loginUrl ? 'unavailable' : ref.internal_index ? 'ready' : 'loading';
+    return { refId, title: ref.title ?? refId, url, status };
   });
 }
