@@ -1,3 +1,4 @@
+import type { ScanState } from './scan';
 import { redactUrl, type Finding, type FindingLabel, type StoryResult } from './model';
 
 export interface ReportTarget {
@@ -10,7 +11,7 @@ export interface GroupedFinding {
   storyIds: string[];
 }
 
-export type ScanState = 'complete' | 'cancelled' | 'error';
+export type { ScanState } from './scan';
 
 export interface IncompleteStory<T extends ReportTarget> {
   target: T;

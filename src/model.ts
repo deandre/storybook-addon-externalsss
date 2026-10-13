@@ -1,5 +1,7 @@
-export type FindingLabel = 'failure' | 'external' | 'font-timing' | 'mocking';
-export type StoryStatus = 'complete' | 'render-error' | 'timeout' | 'unsupported' | 'cancelled';
+export const FINDING_LABELS = ['failure', 'external', 'font-timing', 'mocking'] as const;
+export const STORY_STATUSES = ['complete', 'render-error', 'timeout', 'unsupported', 'cancelled'] as const;
+export type FindingLabel = typeof FINDING_LABELS[number];
+export type StoryStatus = typeof STORY_STATUSES[number];
 
 export interface ResourceObservation {
   url: string;
@@ -91,15 +93,7 @@ export function classifyObservation(observation: Observation, previewHref: strin
     } catch { /* Ignore URLs that cannot be compared to the preview origin. */ }
   };
 
-  for (const resource of observation.resources) {
-    let url: URL;
-    try { url = new URL(resource.url); } catch { continue; }
-    if (!['http:', 'https:'].includes(url.protocol) || isInfrastructureUrl(url, previewHref)) continue;
-    addExternalUrl(resource.url);
-    if (resource.initiatorType === 'fetch' || resource.initiatorType === 'xmlhttprequest') {
-      addUrl(resource.url, 'mocking', 'Review this request for deterministic test data. It may already be mocked.');
-    }
-  }
+  collectResources(observation.resources, previewHref, addExternalUrl, addUrl);
 
   for (const image of observation.images) {
     addExternalUrl(image.url);
@@ -109,7 +103,26 @@ export function classifyObservation(observation: Observation, previewHref: strin
     addExternalUrl(element.url);
     addUrl(element.url, 'failure', `${element.tag.toLowerCase()} emitted a load error.`);
   }
-  for (const font of observation.fonts) {
+  collectFonts(observation.fonts, add);
+
+  return [...findings.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+type AddFinding = (key: string, name: string, url: string | undefined, label: FindingLabel, note: string) => void;
+function collectResources(resources: ResourceObservation[], previewHref: string, addExternalUrl: (url: string) => void, addUrl: (url: string, label: FindingLabel, note: string) => void) {
+  for (const resource of resources) {
+    let url: URL;
+    try { url = new URL(resource.url); } catch { continue; }
+    if (!['http:', 'https:'].includes(url.protocol) || isInfrastructureUrl(url, previewHref)) continue;
+    addExternalUrl(resource.url);
+    if (resource.initiatorType === 'fetch' || resource.initiatorType === 'xmlhttprequest') {
+      addUrl(resource.url, 'mocking', 'Review this request for deterministic test data. It may already be mocked.');
+    }
+  }
+
+}
+function collectFonts(fonts: FontObservation[], add: AddFinding) {
+  for (const font of fonts) {
     const name = `${font.family} (${font.weight}, ${font.style})`;
     const key = `font:${name}`;
     if (font.after === 'error') add(key, name, undefined, 'failure', 'The font face failed to load.');
@@ -120,5 +133,4 @@ export function classifyObservation(observation: Observation, previewHref: strin
     if (font.after === 'loading') add(key, name, undefined, 'font-timing', 'The font was still loading when observation ended.');
   }
 
-  return [...findings.values()].sort((a, b) => a.name.localeCompare(b.name));
 }

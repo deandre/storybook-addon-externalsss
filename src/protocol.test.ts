@@ -40,3 +40,13 @@ describe('scan message validation', () => {
     expect(isScanMessageCandidate({ ...valid(), namespace: 'other' }, 'run', 'story')).toBe(false);
   });
 });
+
+describe('strict preview enums', () => {
+  it('rejects coercible arrays and objects for story and font statuses', () => {
+    for (const status of [['complete'], { toString: () => 'complete' }, 1, null]) expect(isScanMessage({ ...valid(), status })).toBe(false);
+    for (const field of ['atRender', 'after']) {
+      const message = valid();
+      expect(isScanMessage({ ...message, observation: { ...message.observation, fonts: [{ ...message.observation.fonts[0], [field]: ['loaded'] }] } })).toBe(false);
+    }
+  });
+});

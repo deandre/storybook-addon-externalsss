@@ -40,3 +40,29 @@ describe('scan controller', () => {
     expect(controller.getSnapshot()).toMatchObject({ outcome: 'complete', results: [result('one')] });
   });
 });
+
+describe('scan lifecycle events', () => {
+  it('publishes snapshots before events, emits deltas, and no-ops a complete retry', async () => {
+    const controller = createScanController(() => targets, async (target) => result(target.id));
+    const events: import('./scan').ScanEvent[] = [];
+    controller.onEvent((event) => {
+      events.push(event);
+      if (event.type === 'result') expect(controller.getSnapshot()).toMatchObject({ results: expect.arrayContaining([event.result]) });
+    });
+    await controller.run();
+    expect(events.map((event) => event.type)).toEqual(['preparing', 'started', 'progress', 'result', 'progress', 'result', 'finished']);
+    const count = events.length;
+    await controller.retry(); expect(events).toHaveLength(count);
+    expect(events.filter((event) => event.type === 'result').every((event) => !('session' in event))).toBe(true);
+  });
+  it('stops when cleared synchronously by a subscriber during preparation or progress', async () => {
+    for (const phase of ['preparing', 'progress']) {
+      const observe = vi.fn();
+      const controller = createScanController(() => targets, observe);
+      controller.onEvent((event) => { if (event.type === phase) controller.clear(); });
+      await controller.run();
+      expect(observe).not.toHaveBeenCalled();
+      expect(controller.getSnapshot()).toEqual({ phase: 'idle' });
+    }
+  });
+});

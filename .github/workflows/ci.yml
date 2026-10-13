@@ -21,10 +21,12 @@ jobs:
           package-manager-cache: false
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      - run: pnpm check:complexity
       - run: pnpm test
       - run: pnpm build
       - run: pnpm build-storybook
       - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:browser:ci
       - run: pnpm test:composition
 
   compatibility:

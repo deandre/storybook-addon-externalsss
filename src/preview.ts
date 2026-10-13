@@ -188,6 +188,19 @@ function runInstrumentation(currentRunId: string, currentStoryId: string): void 
     window.parent.postMessage(message, window.location.origin);
   };
 
+  const prepareAssets = () => {
+    for (const image of document.images) if (image.loading !== 'eager') image.loading = 'eager';
+    for (const element of pendingElements.keys()) {
+      if (element.isConnected) continue;
+      pendingElements.delete(element);
+      seenElementUrls.delete(element);
+    }
+  };
+  const assetsReady = (fontReady: boolean) => {
+    const pendingImages = [...document.images].some((image) => Boolean(image.currentSrc || image.src) && !image.complete);
+    return fontReady && (!document.fonts || document.fonts.status === 'loaded') && !pendingImages
+      && pendingElements.size === 0 && performance.now() - lastActivity >= 500;
+  };
   const settle = async () => {
     if (settling || sent) return;
     settling = true;
@@ -203,15 +216,8 @@ function runInstrumentation(currentRunId: string, currentStoryId: string): void 
     let fontReady = !document.fonts;
     if (document.fonts) void document.fonts.ready.then(() => { fontReady = true; });
     while (performance.now() - settlingStarted < 12000) {
-      for (const image of document.images) if (image.loading !== 'eager') image.loading = 'eager';
-      for (const element of pendingElements.keys()) {
-        if (!element.isConnected) {
-          pendingElements.delete(element);
-          seenElementUrls.delete(element);
-        }
-      }
-      const pendingImages = [...document.images].some((image) => Boolean(image.currentSrc || image.src) && !image.complete);
-      if (fontReady && (!document.fonts || document.fonts.status === 'loaded') && !pendingImages && pendingElements.size === 0 && performance.now() - lastActivity >= 500) {
+      prepareAssets();
+      if (assetsReady(fontReady)) {
         send(warnings.length ? 'unsupported' : 'complete');
         return;
       }

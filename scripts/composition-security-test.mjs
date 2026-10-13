@@ -36,7 +36,7 @@ const host = await serve(6150);
 const source = await serve(0, true);
 const foreign = await serve(0);
 const browser = await chromium.launch();
-const header = (bridgeId, requestId, type, extra = {}) => ({ namespace, version: 1, bridgeId, requestId, type, ...extra });
+const header = (bridgeId, requestId, type, extra = {}) => ({ namespace, version: 2, bridgeId, requestId, type, ...extra });
 async function probe(parent, denied = false) {
   const page = await browser.newPage();
   await page.goto(`${parent}/probe.html`);
@@ -72,7 +72,7 @@ async function probe(parent, denied = false) {
   await page.waitForTimeout(1200);
   assert.equal(await page.frameLocator('#probe').locator('iframe[title^="Externalsss background scan"]').count(), 0);
   if (parent !== hostOrigin || denied) assert.deepEqual(await page.evaluate(() => window.replies), []);
-  else assert(!(await page.evaluate(() => window.replies)).some((reply) => reply.type === 'session'));
+  else assert(!(await page.evaluate(() => window.replies)).some((reply) => reply.type === 'event'));
   await page.close();
 }
 async function openHost(mode = 'real') {
@@ -95,7 +95,7 @@ async function openHost(mode = 'real') {
     const bridgeId = url.searchParams.get('externalsssBridge');
     const targets = ['first', 'second'].map((id) => ({ id, name: id, managerHref: `${source.origin}/?path=/story/${id}`, previewHref: `${source.origin}/iframe.html?id=${id}` }));
     const results = [{ storyId: 'first', status: 'complete', warnings: [], findings: [] }];
-    const session = { phase: 'running', targets, results, retrying: false, progress: { completed: 1, total: 2, current: 'second' } };
+    const session = { phase: 'running', targets, results: [], retrying: false, progress: { completed: 0, total: 2 } };
     await route.fulfill({ contentType: 'text/html', body: `<script>
       addEventListener('message', event => {
         const data=event.data;
@@ -104,13 +104,18 @@ async function openHost(mode = 'real') {
         const reply=(type,payload={})=>parent.postMessage({...data,type,...payload},event.origin);
         if(data.type==='hello') reply('ready',${mode === 'version' ? '{version:999}' : '{}'});
         if(data.type==='start') {
-          if(${JSON.stringify(mode)}==='malformed') reply('session',{session:{phase:'finished',targets:42}});
+          if(${JSON.stringify(mode)}==='malformed') reply('event',{event:{type:'started',session:{phase:'running',targets:42},pendingStoryIds:[]}});
           else {
-            reply('session',{session:${JSON.stringify(session)}});
+            reply('event',{event:{type:'started',session:${JSON.stringify(session)},pendingStoryIds:['first','second']}});
+            reply('event',{event:{type:'result',result:${JSON.stringify(results[0])},progress:{completed:1,total:2}}});
+            reply('event',{event:{type:'progress',progress:{completed:1,total:2,current:'second'}}});
             if(${JSON.stringify(mode)}==='stale') {
               parent.postMessage({...data,requestId:'old',version:999,type:'error',error:'stale error'},event.origin);
               setTimeout(()=>parent.postMessage({...data,type:'error',version:999,error:'late completed request'},event.origin),400);
-              setTimeout(()=>reply('session',{session:{...${JSON.stringify(session)},phase:'finished',outcome:'complete',results:[...${JSON.stringify(results)},{storyId:'second',status:'complete',warnings:[],findings:[]}]}}),200);
+              setTimeout(()=>{
+                reply('event',{event:{type:'result',result:{storyId:'second',status:'complete',warnings:[],findings:[]},progress:{completed:2,total:2}}});
+                reply('event',{event:{type:'finished',outcome:'complete',unresolved:[]}});
+              },200);
             }
           }
         }
