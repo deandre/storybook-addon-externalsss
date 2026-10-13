@@ -19,6 +19,7 @@
     "node": ">=20.19.0"
   },
   "exports": {
+    "./preset": "./dist/preset.js",
     "./preview": "./dist/preview.js",
     "./manager": "./dist/manager.js",
     "./package.json": "./package.json"
@@ -38,6 +39,7 @@
     "test": "vitest run",
     "storybook": "storybook dev -p 6007",
     "build-storybook": "storybook build",
+    "test:composition": "node scripts/composition-security-test.mjs",
     "test:browser": "node scripts/browser-test.mjs",
     "test:compatibility": "node scripts/compatibility-test.mjs"
   },

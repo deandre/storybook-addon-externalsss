@@ -49,17 +49,42 @@ export default {
 };
 ```
 
-Storybook supplies React for the manager panel. The addon works with React and other frameworks without adding or changing your app's React dependencies. You don't need a preview import or addon options.
+Storybook supplies React for the manager panel. The addon works with React and other frameworks without adding or changing your app's React dependencies. Local scans need no preview import or addon options.
+
+## Scan a composed Storybook
+
+When your Storybook has `refs`, choose **Local** or a referenced catalog in the panel's **Catalog** selector. Each scan and JSON report covers one catalog. Loading or unavailable refs cannot be selected.
+
+Install Externalsss in both the host and each referenced Storybook. In the referenced Storybook, allow the host's exact origin:
+
+```ts
+export default {
+  addons: [
+    {
+      name: 'storybook-addon-externalsss',
+      options: {
+        trustedManagerOrigins: ['https://storybook.example.com'],
+      },
+    },
+  ],
+};
+```
+
+Include the port for development origins, such as `http://localhost:6006`. Wildcards, paths, query strings, and fragments are not accepted. Remote access is denied unless the origin is listed; URL parameters cannot grant access. Deploy the updated referenced Storybook before scanning it from the host.
+
+Remote scans run in a hidden instance of the referenced Storybook's manager and use that catalog's default globals and preview configuration. Nested refs are excluded. The host's visible Canvas stays in place, and story links open the source Storybook. **Retry incomplete** reuses the remote scan's original context.
+
+The remote manager sends observations only to an explicitly trusted host. Trust a host only if it may receive the resource URLs shown in expanded findings. Authentication, framing policies, and index access must permit composition. Connection failures leave received results available to download; start a new scan to reconnect. Connecting can take up to 30 seconds, and a running bridge stops after 20 seconds without an update.
 
 ## What the scan can and cannot see
 
-The scan covers `story` entries in the current Storybook index and skips composed external catalogs. It reads browser Resource Timing entries and records fetch/XHR calls made after instrumentation starts. Resource Timing is not a complete network trace, and cross-origin response details may be unavailable. An unknown response status is not treated as a failure.
+The scan covers `story` entries in the selected catalog’s own index. It does not recursively scan that catalog’s refs. It reads browser Resource Timing entries and records fetch/XHR calls made after instrumentation starts. Resource Timing is not a complete network trace, and cross-origin response details may be unavailable. An unknown response status is not treated as a failure.
 
 Each story gets up to 15 seconds. After Storybook finishes rendering, the scan waits for images, fonts, stylesheets, and scripts to settle and then for 500 ms without activity. It uses the current Storybook globals and default story args.
 
 A timeout, render error, cancellation, unsupported browser API, or resource buffer limit leaves the story marked incomplete. The scan may miss activity after the observation window.
 
-Custom preview URLs must use the same origin as the manager. The addon sends raw observations only to a same-origin parent so pages on other origins cannot receive resource URLs.
+Custom preview URLs must use the same origin as the manager. Preview instrumentation sends raw observations only to its same-origin manager. Composed scans relay results from that manager to an explicitly trusted host.
 
 Results stay in the browser tab until you download a JSON file. The addon does not send reports to a service, save them automatically, or change requests. It does not lint CSS font declarations or create mocks.
 
@@ -72,12 +97,15 @@ pnpm build
 pnpm build-storybook
 pnpm exec playwright install chromium
 pnpm test:browser
+pnpm test:composition
 pnpm test:compatibility
 ```
 
 `test:browser` expects the demo at `http://127.0.0.1:6100/`. Start it with `pnpm exec storybook dev -p 6100 --ci --no-open`, or set `EXTERNALSSS_STORYBOOK_URL` to another URL. `EXTERNALSSS_TEST_MODE=full` runs only the full-scan browser case, which is useful for a static build served under a subpath.
 
-`test:compatibility` packs the addon and installs it in temporary Storybook 9 and 10 projects. It covers React 18, React 19, Vue without React, Vite, and Webpack in development and static builds. Static checks also use a hosting subpath and a custom preview URL. Set `EXTERNALSSS_COMPAT_CASE` to a case name from `scripts/compatibility-test.mjs` to run one combination. CI runs each combination separately.
+`test:composition` checks bridge trust, message validation, connection failures, and independent reports for catalogs with identical story IDs. It uses the built demo and port 6150.
+
+`test:compatibility` builds the demo and uses port 6150 for the composition host. It packs the addon and installs it in temporary Storybook 9 and 10 projects. It covers React 18, React 19, Vue without React, Vite, and Webpack in development and static builds. The checks include composed catalogs, cancellation, retries, hosting subpaths, and custom preview URLs. Set `EXTERNALSSS_COMPAT_CASE` to a case name from `scripts/compatibility-test.mjs` to run one combination. CI runs each combination separately.
 
 ## Releasing
 

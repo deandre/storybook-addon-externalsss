@@ -77,7 +77,7 @@ export function summarizeScan<T extends ReportTarget>(targets: T[], results: Sto
   };
 }
 
-export function buildReport(targets: ReportTarget[], results: StoryResult[], state: ScanState, generatedAt: string) {
+export function buildReport(targets: ReportTarget[], results: StoryResult[], state: ScanState, generatedAt: string, catalog?: { refId: string; title: string; url: string }) {
   const resultById = new Map(results.map((result) => [result.storyId, result]));
   const targetById = new Map(targets.map((target) => [target.id, target]));
   const { groups, incomplete: _incomplete, ...summary } = summarizeScan(targets, results);
@@ -85,6 +85,7 @@ export function buildReport(targets: ReportTarget[], results: StoryResult[], sta
   return {
     schemaVersion: 1,
     generatedAt,
+    ...(catalog ? { catalog: { ...catalog, url: new URL(catalog.url).origin + new URL(catalog.url).pathname } } : {}),
     scanStatus: state,
     summary,
     stories: targets.map((target) => {

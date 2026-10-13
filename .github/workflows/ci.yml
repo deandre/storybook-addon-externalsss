@@ -24,6 +24,8 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: pnpm build-storybook
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:composition
 
   compatibility:
     name: Compatibility (${{ matrix.fixture }})

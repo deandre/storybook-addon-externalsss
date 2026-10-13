@@ -191,7 +191,14 @@ function runInstrumentation(currentRunId: string, currentStoryId: string): void 
   const settle = async () => {
     if (settling || sent) return;
     settling = true;
-    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    // Invisible cross-origin managers can have their animation frames suspended.
+    // Bound the paint wait so asset observation still settles in a hidden bridge.
+    await new Promise<void>((resolve) => {
+      let frame: number;
+      const finish = () => { cancelAnimationFrame(frame); clearTimeout(timer); resolve(); };
+      const timer = setTimeout(finish, 100);
+      frame = requestAnimationFrame(() => { frame = requestAnimationFrame(finish); });
+    });
     const settlingStarted = performance.now();
     let fontReady = !document.fonts;
     if (document.fonts) void document.fonts.ready.then(() => { fontReady = true; });

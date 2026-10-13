@@ -1,6 +1,6 @@
 import { defineConfig } from 'tsup';
 
-export default defineConfig({
+export default defineConfig([{
   entry: ['src/manager.tsx', 'src/preview.ts'],
   outDir: 'dist',
   clean: false,
@@ -11,4 +11,4 @@ export default defineConfig({
   splitting: false,
   // Classic JSX in tsconfig uses manager React; JSX runtimes are not manager globals.
   external: ['react', 'react-dom', 'storybook/manager-api', 'storybook/preview-api', 'storybook/theming', 'storybook/internal/components', 'storybook/internal/core-events'],
-});
+}, { entry: ['src/preset.ts'], outDir: 'dist', clean: false, format: ['esm'], platform: 'node', target: 'node20', dts: true }]);

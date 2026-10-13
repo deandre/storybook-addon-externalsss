@@ -223,7 +223,6 @@ async function retryScan() {
   await page.goto(new URL('?path=/story/externalsss-demo-resources--clean-image&globals=theme:dark&custom=original', base).href);
   await page.getByRole('tab', { name: 'Externalsss' }).click();
   const canvas = await page.locator('#storybook-preview-iframe').getAttribute('src');
-  const managerUrl = page.url();
   const download = async () => {
     const event = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download JSON' }).click();
@@ -246,6 +245,9 @@ async function retryScan() {
   assert.match(JSON.stringify(original), /Storybook reported a render or play error/);
   assert.doesNotMatch(JSON.stringify(original), /token=secret/);
   const retained = original.stories.filter((story) => story.status === 'complete');
+
+  // Capture after the initial scan lets Storybook normalize its URL first.
+  const managerUrl = page.url();
 
   // A failed retry must preserve the prior report and remain retryable.
   await page.evaluate(() => {
