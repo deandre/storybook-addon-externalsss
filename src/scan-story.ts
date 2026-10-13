@@ -1,18 +1,10 @@
 import { classifyObservation, type StoryResult } from './model';
 import { MESSAGE_NAMESPACE, MESSAGE_TYPE, RUN_QUERY_PARAM, isScanMessage, isScanMessageCandidate } from './protocol';
-import type { ScanState } from './report';
-import type { StoryTarget } from './storybook-compat';
+import type { StoryTarget } from './scan';
 
 const STORY_LIMIT_MS = 15000;
 
-export type ScanSession =
-  | { phase: 'idle' }
-  | { phase: 'running'; targets: StoryTarget[]; results: StoryResult[]; retrying: boolean; progress: { completed: number; total: number; current?: string } }
-  | { phase: 'finished'; outcome: ScanState; targets: StoryTarget[]; results: StoryResult[]; error?: string; restartRequired?: boolean };
-
-export function createRunId(): string {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-}
+export { createRunId, type ScanSession } from './scan';
 
 function escapeAttribute(value: string): string {
   return value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');

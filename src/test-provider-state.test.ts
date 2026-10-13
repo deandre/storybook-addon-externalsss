@@ -83,3 +83,37 @@ describe('resource statuses', () => {
   });
 
 });
+
+describe('provider attachment', () => {
+  function stores() {
+    const stops = [vi.fn(), vi.fn()];
+    const provider = { testProviderId: 'test', getState: vi.fn(), setState: vi.fn(), runWithState: vi.fn(), settingsChanged: vi.fn(), onRunAll: vi.fn(() => stops[0]!), onClearAll: vi.fn(() => stops[1]!) };
+    const statuses = { typeId: 'resources', getAll: vi.fn(), set: vi.fn(), unset: vi.fn(), onSelect: vi.fn(), onAllStatusChange: vi.fn() };
+    return { provider, statuses, stops };
+  }
+  it('hydrates a running scan, then writes only subsequent observations', async () => {
+    const targets = ['one', 'two'].map((id) => ({ id, name: id, previewHref: 'https://test.test/iframe.html', managerHref: 'https://test.test/' }));
+    let finish!: (result: StoryResult) => void;
+    const controller = createScanController(() => targets, vi.fn().mockResolvedValueOnce(clean).mockImplementation(() => new Promise<StoryResult>((resolve) => { finish = resolve; })));
+    const run = controller.run(); await Promise.resolve();
+    const { provider, statuses, stops } = stores();
+    const connection = connectTestProvider(controller, provider, statuses);
+    expect(statuses.set).toHaveBeenLastCalledWith([resourceStatus('one', clean), resourceStatus('two', undefined, true)]);
+    expect(provider.setState).toHaveBeenLastCalledWith('test-provider-state:running');
+    finish({ ...clean, storyId: 'two' }); await run;
+    expect(statuses.set).toHaveBeenLastCalledWith([resourceStatus('two', { ...clean, storyId: 'two' })]);
+    connection.dispose(); connection.dispose();
+    for (const stop of stops) expect(stop).toHaveBeenCalledOnce();
+    statuses.set.mockClear(); statuses.unset.mockClear(); controller.clear(); expect(statuses.set).not.toHaveBeenCalled(); expect(statuses.unset).not.toHaveBeenCalled();
+  });
+  it('hydrates a finished scan including unvisited stories', async () => {
+    const targets = ['one', 'two'].map((id) => ({ id, name: id, previewHref: 'https://test.test/iframe.html', managerHref: 'https://test.test/' }));
+    const controller = createScanController(() => targets, async () => { throw new Error('failed'); });
+    await controller.run();
+    const { provider, statuses } = stores();
+    const connection = connectTestProvider(controller, provider, statuses);
+    expect(statuses.set).toHaveBeenCalledWith([resourceStatus('one'), resourceStatus('two')]);
+    expect(provider.setState).toHaveBeenLastCalledWith('test-provider-state:crashed');
+    connection.dispose();
+  });
+});

@@ -3,7 +3,7 @@ import { useStorybookState, type API } from 'storybook/manager-api';
 import { createScanController, type ScanController } from './scan-controller';
 import { scanStory } from './scan-story';
 import { getStoryTargets } from './storybook-compat';
-export { createRunId, type ScanSession } from './scan-story';
+export { createRunId, type ScanSession } from './scan';
 export type { StoryTarget } from './storybook-compat';
 
 const controllers = new WeakMap<API, { controller: ScanController; index?: ReturnType<API['getIndex']> }>();
