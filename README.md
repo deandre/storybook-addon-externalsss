@@ -78,7 +78,7 @@ export default {
 };
 ```
 
-Include the port for development origins, such as `http://localhost:6006`. Wildcards, paths, query strings, and fragments are not accepted. Remote access is denied unless the origin is listed; URL parameters cannot grant access. Deploy the updated referenced Storybook before scanning it from the host.
+Include the port for development origins, such as `http://localhost:6006`. Wildcards, paths, query strings, and fragments are not accepted. Remote access is denied unless the origin is listed; URL parameters cannot grant access. Deploy the updated referenced Storybook before scanning it from the host. The host and referenced Storybooks must both use Externalsss bridge protocol v2; older bridge versions are rejected. Upgrade both installations together.
 
 Remote scans run in a hidden instance of the referenced Storybook's manager and use that catalog's default globals and preview configuration. Nested refs are excluded. The host's visible Canvas stays in place, and story links open the source Storybook. **Retry incomplete** reuses the remote scan's original context.
 
@@ -100,16 +100,20 @@ Results stay in the browser tab until you download a JSON file. The addon does n
 
 ```sh
 pnpm check
+pnpm check:complexity
 pnpm test
 pnpm build
 pnpm build-storybook
 pnpm exec playwright install chromium
 pnpm test:browser
+pnpm test:browser:ci
 pnpm test:composition
 pnpm test:compatibility
 ```
 
 `test:browser` expects the demo at `http://127.0.0.1:6100/`. Start it with `pnpm exec storybook dev -p 6100 --ci --no-open`, or set `EXTERNALSSS_STORYBOOK_URL` to another URL. `EXTERNALSSS_TEST_MODE=full` runs only the full-scan browser case, which is useful for a static build served under a subpath.
+
+`test:browser:ci` starts the demo on port 6100, runs the complete browser suite, and stops the server. CI runs this alongside composition and compatibility checks. `check:complexity` enforces a maximum cyclomatic complexity of 10 for all production TypeScript, including demo stories.
 
 `test:composition` checks bridge trust, message validation, connection failures, and independent reports for catalogs with identical story IDs. It uses the built demo and port 6150.
 
