@@ -90,4 +90,3 @@ export function scanStory(target: StoryTarget, runId: string, signal: AbortSigna
     }
   });
 }
-

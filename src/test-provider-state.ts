@@ -78,4 +78,3 @@ export function connectTestProvider(
   const stopClear = provider.onClearAll(clear);
   return { clear, dispose: () => { unsubscribe(); stopRun(); stopClear(); } };
 }
-
