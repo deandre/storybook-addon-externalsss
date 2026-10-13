@@ -43,7 +43,8 @@
     "test:browser": "node scripts/browser-test.mjs",
     "test:compatibility": "node scripts/compatibility-test.mjs",
     "check:complexity": "eslint src",
-    "test:browser:ci": "node scripts/browser-test-runner.mjs"
+    "test:browser:ci": "node scripts/browser-test-runner.mjs",
+    "benchmark:scans": "pnpm exec tsup && node scripts/benchmark-scans.mjs"
   },
   "devDependencies": {
     "@storybook/addon-docs": "10.6.1",

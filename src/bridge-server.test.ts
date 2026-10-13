@@ -33,20 +33,20 @@ function setup() {
     requestId = 'request',
     source: unknown = parent,
     origin = 'https://host.test',
-    version = 2,
+    version = 3,
   ) => receive({ data: { ...bridgeMessage('bridge', requestId, type), version }, source, origin } as MessageEvent);
   return { send, server, controller, observe, parent, host };
 }
 describe('remote bridge command server', () => {
-  it('denies wrong senders/origins and explicitly rejects protocol v1', () => {
+  it.each([1, 2])('denies wrong senders/origins and explicitly rejects protocol v%i', (version) => {
     const s = setup();
     s.send('start', 'request', {});
     s.send('hello', '', s.parent, 'https://other.test');
     expect(s.parent.postMessage).not.toHaveBeenCalled();
     expect(s.observe).not.toHaveBeenCalled();
-    s.send('hello', '', s.parent, 'https://host.test', 1);
+    s.send('hello', '', s.parent, 'https://host.test', version);
     expect(s.parent.postMessage.mock.lastCall?.[0]).toMatchObject({
-      version: 2,
+      version: 3,
       type: 'error',
       error: expect.stringContaining('Incompatible'),
     });
@@ -58,8 +58,7 @@ describe('remote bridge command server', () => {
     const s = setup();
     s.send('start');
     s.send('start');
-    await Promise.resolve();
-    await Promise.resolve();
+    await vi.waitFor(() => expect(s.controller.getSnapshot().phase).toBe('finished'));
     expect(s.observe).toHaveBeenCalledOnce();
     const messages = s.parent.postMessage.mock.calls.map(([message]) => message);
     expect(messages.every((message) => message.type === 'event')).toBe(true);
@@ -92,8 +91,7 @@ describe('remote bridge command server', () => {
     s.send('cancel', 'other');
     expect(s.controller.getSnapshot().phase).toBe('running');
     s.send('cancel');
-    await Promise.resolve();
-    await Promise.resolve();
+    await vi.waitFor(() => expect(s.controller.getSnapshot().phase).toBe('finished'));
     expect(s.controller.getSnapshot()).toMatchObject({ outcome: 'cancelled' });
     s.server.dispose();
     s.parent.postMessage.mockClear();

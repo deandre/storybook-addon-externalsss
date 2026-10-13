@@ -11,6 +11,7 @@ export interface StoryTarget {
 export interface ScanProgress {
   completed: number;
   total: number;
+  active: number;
   current?: string;
 }
 export type ScanSession =
@@ -55,5 +56,5 @@ export function canRetry(session: ScanSession): boolean {
 }
 
 export function preparingSession(): RunningSession {
-  return { phase: 'running', targets: [], results: [], retrying: false, progress: { completed: 0, total: 0 } };
+  return { phase: 'running', targets: [], results: [], retrying: false, progress: { completed: 0, total: 0, active: 0 } };
 }

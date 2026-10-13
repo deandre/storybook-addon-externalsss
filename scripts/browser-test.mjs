@@ -6,6 +6,26 @@ import { testProviderCheck } from './test-provider-check.mjs';
 const base = process.env.EXTERNALSSS_STORYBOOK_URL ?? 'http://127.0.0.1:6100/';
 const fullOnly = process.env.EXTERNALSSS_TEST_MODE === 'full';
 const browser = await chromium.launch({ headless: true });
+const concurrency = Number(process.env.EXTERNALSSS_TEST_CONCURRENCY ?? 1);
+assert([1, 2, 4].includes(concurrency));
+const originalNewPage = browser.newPage.bind(browser);
+browser.newPage = async (...args) => {
+  const page = await originalNewPage(...args);
+  await page.route('**/*', async (route) => {
+    const url = new URL(route.request().url());
+    if (!route.request().isNavigationRequest() || (!url.pathname.endsWith('/') && !url.pathname.endsWith('/index.html'))) { await route.continue(); return; }
+    const response = await route.fetch();
+    const body = (await response.text()).replace(/(<script id="externalsss-scan-options"[^>]*>)[\s\S]*?(<\/script>)/, `$1${JSON.stringify({ scanConcurrency: concurrency })}$2`);
+    await route.fulfill({ response, body });
+  });
+  await page.addInitScript(() => {
+    window.__externalsssPeak = 0;
+    new MutationObserver(() => {
+      window.__externalsssPeak = Math.max(window.__externalsssPeak, document.querySelectorAll('iframe[title^="Externalsss background scan"]').length);
+    }).observe(document, { childList: true, subtree: true });
+  });
+  return page;
+};
 
 async function openPanel(page) {
   await page.goto(new URL('?path=/story/externalsss-demo-resources--clean-image', base).href, { waitUntil: 'domcontentloaded' });
@@ -24,8 +44,8 @@ async function fullScan() {
   await page.evaluate(() => {
     window.__externalsssLeaks = 0;
     window.addEventListener('message', (event) => {
-      const outer = document.querySelector('iframe[title^="Externalsss background scan"]');
-      if (outer && event.source === outer.contentWindow && event.data?.namespace !== 'storybook-addon-externalsss') {
+      const outer = [...document.querySelectorAll('iframe[title^="Externalsss background scan"]')].find((frame) => event.source === frame.contentWindow);
+      if (outer && event.data?.namespace !== 'storybook-addon-externalsss') {
         window.__externalsssLeaks += 1;
       }
     });
@@ -73,6 +93,8 @@ async function fullScan() {
   assert(exported.findings.some((finding) => finding.resource.includes('externalsss-api?…')));
   assert(exported.findings.some((finding) => finding.affectedStories.length > 0));
   assert.doesNotMatch(exportedText, /demo-secret|"key"\s*:|"url"\s*:/);
+  assert.equal(await page.evaluate(() => window.__externalsssPeak), concurrency);
+  assert.equal(await page.locator('iframe[title^="Externalsss background scan"]').count(), 0);
   await page.close();
   console.log('PASS full scan, classification, render error, Canvas isolation, redacted JSON export');
 }
@@ -85,6 +107,7 @@ async function cancelledScan() {
   await page.waitForFunction(() => Number(document.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')) >= 1, null, { timeout: 15000 });
   await page.locator('.externalsss').getByRole('button', { name: 'Cancel' }).click();
   await waitForScan(page, 'Scan cancelled');
+  assert.equal(await page.locator('iframe[title^="Externalsss background scan"]').count(), 0);
   assert.equal(page.url(), initialUrl);
   assert.match(await page.locator('.externalsss').getByRole('status').innerText(), /[1-9] of 10 stories checked\. Results are partial/);
   assert.match(await page.locator('[aria-label="Incomplete stories"]').innerText(), /stories not scanned/);
@@ -157,7 +180,13 @@ async function timedOutScan() {
   });
   await openPanel(page);
   await page.locator('.externalsss').getByRole('button', { name: 'Run scan' }).click();
+  if (concurrency > 1) {
+    await page.waitForFunction(() => Number(document.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')) === 9, null, { timeout: 10000 });
+    assert.equal(await page.locator('iframe[title^="Externalsss background scan"]').count(), 1, 'other slots must finish before the slow story deadline');
+    assert.match(await page.locator('.externalsss').getByRole('status').innerText(), /9 of 10 completed · 1 active/);
+  }
   await waitForScan(page, 'Scan finished with gaps');
+  assert.equal(await page.locator('iframe[title^="Externalsss background scan"]').count(), 0);
   const incompleteText = await page.locator('[aria-label="Incomplete stories"]').innerText();
   assert.match(incompleteText, /Clean Image/);
   assert.match(incompleteText, /Timed out/);
@@ -250,7 +279,7 @@ async function retryScan() {
   // Capture after the initial scan lets Storybook normalize its URL first.
   const managerUrl = page.url();
 
-  // A failed retry must preserve the prior report and remain retryable.
+  // A failed retry retains completed observations and remains retryable; active siblings are cancelled.
   await page.evaluate(() => {
     const append = document.body.appendChild;
     document.body.appendChild = function(node) {
@@ -265,12 +294,16 @@ async function retryScan() {
   });
   await page.locator('.externalsss').getByRole('button', { name: 'Retry incomplete' }).click();
   await waitForScan(page, 'Scan stopped');
-  assert.deepEqual((await download()).stories, original.stories);
+  const failedRetry = await download();
+  assert.deepEqual(failedRetry.stories.filter(({ id }) => retained.some((story) => story.id === id)), retained);
+  assert.deepEqual(failedRetry.stories.find(({ id }) => id === first), original.stories.find(({ id }) => id === first));
+  assert.equal(failedRetry.stories.find(({ id }) => id === failing).status, concurrency === 1 ? 'render-error' : 'cancelled');
+  assert.equal(await page.locator('iframe[title^="Externalsss background scan"]').count(), 0);
 
   attempt = 1;
   let start = requests.length;
   await page.locator('.externalsss').getByRole('button', { name: 'Retry incomplete' }).click();
-  await waitForScan(page, 'Retrying 1 of 2');
+  await waitForScan(page, 'Retrying: 0 of 2 completed');
   assert.equal(await page.getByRole('progressbar').getAttribute('aria-valuemax'), '2');
   assert.equal(await page.getByRole('progressbar').getAttribute('aria-valuenow'), '0');
   await waitForScan(page, 'Scan finished with gaps');
@@ -288,7 +321,7 @@ async function retryScan() {
 
   attempt = 2;
   await page.locator('.externalsss').getByRole('button', { name: 'Retry incomplete' }).click();
-  await waitForScan(page, 'Retrying 1 of 1');
+  await waitForScan(page, 'Retrying: 0 of 1 completed');
   await page.locator('.externalsss').getByRole('button', { name: 'Cancel' }).click();
   await waitForScan(page, 'Scan cancelled');
   const cancelled = await download();

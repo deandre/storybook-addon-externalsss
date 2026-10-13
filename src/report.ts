@@ -19,10 +19,13 @@ export interface IncompleteStory<T extends ReportTarget> {
   status: StoryResult['status'] | 'not-scanned';
 }
 
-export function replaceStoryResult(results: StoryResult[], result: StoryResult): StoryResult[] {
-  const position = results.findIndex((existing) => existing.storyId === result.storyId);
-  if (position === -1) return [...results, result];
-  return results.map((existing, index) => index === position ? result : existing);
+export function orderedStoryResults(targets: ReportTarget[], results: StoryResult[], replacement?: StoryResult): StoryResult[] {
+  const byId = new Map(results.map((result) => [result.storyId, result]));
+  if (replacement) byId.set(replacement.storyId, replacement);
+  return targets.flatMap((target) => {
+    const result = byId.get(target.id);
+    return result ? [result] : [];
+  });
 }
 
 export function groupFindings(results: StoryResult[]): GroupedFinding[] {
@@ -40,8 +43,8 @@ export function groupFindings(results: StoryResult[]): GroupedFinding[] {
     }
   }
   return [...grouped.values()]
-    .map(({ finding, storyIds }) => ({ finding, storyIds: [...storyIds] }))
-    .sort((a, b) => Number(b.finding.labels.includes('failure')) - Number(a.finding.labels.includes('failure')) || a.finding.name.localeCompare(b.finding.name));
+    .map(({ finding, storyIds }) => ({ finding: { ...finding, labels: [...finding.labels].sort(), notes: [...finding.notes].sort() }, storyIds: [...storyIds] }))
+    .sort((a, b) => Number(b.finding.labels.includes('failure')) - Number(a.finding.labels.includes('failure')) || a.finding.name.localeCompare(b.finding.name) || a.finding.key.localeCompare(b.finding.key));
 }
 
 function safeResourceName(finding: Finding): string {
@@ -55,7 +58,7 @@ function safeResourceName(finding: Finding): string {
 }
 
 export function summarizeScan<T extends ReportTarget>(targets: T[], results: StoryResult[], includeUnvisited = true) {
-  const groups = groupFindings(results);
+  const groups = groupFindings(orderedStoryResults(targets, results));
   const resultById = new Map(results.map((result) => [result.storyId, result]));
   const labelCounts: Record<FindingLabel, number> = {
     failure: 0, external: 0, 'font-timing': 0, mocking: 0,

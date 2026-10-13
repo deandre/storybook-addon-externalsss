@@ -16,7 +16,7 @@ const running: RunningSession = {
   targets: [target],
   results: [],
   retrying: false,
-  progress: { completed: 0, total: 1 },
+  progress: { completed: 0, total: 1, active: 0 },
 };
 let receive: (event: MessageEvent) => void;
 let frame: {
@@ -91,13 +91,13 @@ describe('remote transport lifecycle', () => {
     const targets = [target, { ...target, id: 'two' }];
     event(requestId, {
       type: 'started',
-      session: { ...running, targets, progress: { completed: 0, total: 2 } },
+      session: { ...running, targets, progress: { completed: 0, total: 2, active: 0 } },
       pendingStoryIds: ['one', 'two'],
     });
     event(requestId, {
       type: 'result',
       result: { storyId: 'one', status: 'complete', warnings: [], findings: [] },
-      progress: { completed: 1, total: 2 },
+      progress: { completed: 1, total: 2, active: 0 },
     });
     vi.advanceTimersByTime(20000);
     expect(controller.getSnapshot()).toMatchObject({
@@ -113,7 +113,7 @@ describe('remote transport lifecycle', () => {
     event(requestId, {
       type: 'result',
       result: { storyId: 'one', status: 'timeout', warnings: [], findings: [] },
-      progress: { completed: 1, total: 1 },
+      progress: { completed: 1, total: 1, active: 0 },
     });
     event(requestId, { type: 'finished', outcome: 'complete', unresolved: [] });
     expect(controller.getConnectionPhase()).toBe('ready');

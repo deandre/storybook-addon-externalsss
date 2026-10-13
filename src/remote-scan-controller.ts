@@ -185,7 +185,7 @@ export function createRemoteScanController(catalog?: Catalog) {
       targets: session.targets,
       results: session.results,
       retrying: true,
-      progress: { completed: 0, total: incompleteTargets(session.targets, session.results).length },
+      progress: { completed: 0, total: incompleteTargets(session.targets, session.results).length, active: 0 },
     });
     startRequest(connection, 'retry');
   };

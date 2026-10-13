@@ -1,0 +1,712 @@
+{
+  "date": "2026-10-13",
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M2 Max",
+    "node": "22.20.0",
+    "chromium": "147.0.7727.15",
+    "storybook": "10.6.1"
+  },
+  "command": "pnpm benchmark:scans",
+  "stories": 500,
+  "repetitionsPerCohortAndLimit": 3,
+  "completedRuns": 36,
+  "isolationPassed": true,
+  "knownRenderErrors": 50,
+  "decision": {
+    "recommendedDefault": 2,
+    "cohorts": [
+      {
+        "mode": "local",
+        "cacheState": "fresh",
+        "sequentialConsistent": true,
+        "parallelIdentical": true,
+        "speedup": 0.47288283220466387,
+        "classificationDifferences": [
+          {
+            "concurrency": 1,
+            "repetition": 1,
+            "storyIds": []
+          },
+          {
+            "concurrency": 1,
+            "repetition": 2,
+            "storyIds": []
+          },
+          {
+            "concurrency": 1,
+            "repetition": 3,
+            "storyIds": []
+          },
+          {
+            "concurrency": 2,
+            "repetition": 1,
+            "storyIds": []
+          },
+          {
+            "concurrency": 2,
+            "repetition": 2,
+            "storyIds": []
+          },
+          {
+            "concurrency": 2,
+            "repetition": 3,
+            "storyIds": []
+          },
+          {
+            "concurrency": 4,
+            "repetition": 1,
+            "storyIds": []
+          },
+          {
+            "concurrency": 4,
+            "repetition": 2,
+            "storyIds": []
+          },
+          {
+            "concurrency": 4,
+            "repetition": 3,
+            "storyIds": []
+          }
+        ],
+        "mediansMs": {
+          "1": 266224.118167,
+          "2": 140331.30316699995,
+          "4": 75321.15500000026
+        }
+      },
+      {
+        "mode": "local",
+        "cacheState": "warm",
+        "sequentialConsistent": true,
+        "parallelIdentical": true,
+        "speedup": 0.47366485459388274,
+        "classificationDifferences": [
+          {
+            "concurrency": 1,
+            "repetition": 1,
+            "storyIds": []
+          },
+          {
+            "concurrency": 1,
+            "repetition": 2,
+            "storyIds": []
+          },
+          {
+            "concurrency": 1,
+            "repetition": 3,
+            "storyIds": []
+          },
+          {
+            "concurrency": 2,
+            "repetition": 1,
+            "storyIds": []
+          },
+          {
+            "concurrency": 2,
+            "repetition": 2,
+            "storyIds": []
+          },
+          {
+            "concurrency": 2,
+            "repetition": 3,
+            "storyIds": []
+          },
+          {
+            "concurrency": 4,
+            "repetition": 1,
+            "storyIds": []
+          },
+          {
+            "concurrency": 4,
+            "repetition": 2,
+            "storyIds": []
+          },
+          {
+            "concurrency": 4,
+            "repetition": 3,
+            "storyIds": []
+          }
+        ],
+        "mediansMs": {
+          "1": 266187.121958,
+          "2": 140103.6375409998,
+          "4": 73689.83208400011
+        }
+      },
+      {
+        "mode": "composed",
+        "cacheState": "fresh",
+        "sequentialConsistent": true,
+        "parallelIdentical": true,
+        "speedup": 0.4809442385120535,
+        "classificationDifferences": [
+          {
+            "concurrency": 1,
+            "repetition": 1,
+            "storyIds": []
+          },
+          {
+            "concurrency": 1,
+            "repetition": 2,
+            "storyIds": []
+          },
+          {
+            "concurrency": 1,
+            "repetition": 3,
+            "storyIds": []
+          },
+          {
+            "concurrency": 2,
+            "repetition": 1,
+            "storyIds": []
+          },
+          {
+            "concurrency": 2,
+            "repetition": 2,
+            "storyIds": []
+          },
+          {
+            "concurrency": 2,
+            "repetition": 3,
+            "storyIds": []
+          },
+          {
+            "concurrency": 4,
+            "repetition": 1,
+            "storyIds": []
+          },
+          {
+            "concurrency": 4,
+            "repetition": 2,
+            "storyIds": []
+          },
+          {
+            "concurrency": 4,
+            "repetition": 3,
+            "storyIds": []
+          }
+        ],
+        "mediansMs": {
+          "1": 262068.2345420001,
+          "2": 136028.02704199962,
+          "4": 70091.14129200019
+        }
+      },
+      {
+        "mode": "composed",
+        "cacheState": "warm",
+        "sequentialConsistent": true,
+        "parallelIdentical": true,
+        "speedup": 0.480411044599508,
+        "classificationDifferences": [
+          {
+            "concurrency": 1,
+            "repetition": 1,
+            "storyIds": []
+          },
+          {
+            "concurrency": 1,
+            "repetition": 2,
+            "storyIds": []
+          },
+          {
+            "concurrency": 1,
+            "repetition": 3,
+            "storyIds": []
+          },
+          {
+            "concurrency": 2,
+            "repetition": 1,
+            "storyIds": []
+          },
+          {
+            "concurrency": 2,
+            "repetition": 2,
+            "storyIds": []
+          },
+          {
+            "concurrency": 2,
+            "repetition": 3,
+            "storyIds": []
+          },
+          {
+            "concurrency": 4,
+            "repetition": 1,
+            "storyIds": []
+          },
+          {
+            "concurrency": 4,
+            "repetition": 2,
+            "storyIds": []
+          },
+          {
+            "concurrency": 4,
+            "repetition": 3,
+            "storyIds": []
+          }
+        ],
+        "mediansMs": {
+          "1": 261422.83579200017,
+          "2": 135832.4181669997,
+          "4": 69548.41975000035
+        }
+      }
+    ]
+  },
+  "profile": {
+    "kind": "synthetic result-copying and aggregation, outside observation time",
+    "count": 500,
+    "repetitions": [
+      {
+        "resultCopyMs": 16.426831994205713,
+        "aggregationMs": 44.632922989316285
+      },
+      {
+        "resultCopyMs": 8.112295024096966,
+        "aggregationMs": 27.29700300656259
+      },
+      {
+        "resultCopyMs": 8.106451974250376,
+        "aggregationMs": 27.871032007969916
+      }
+    ],
+    "medianResultCopyMs": 8.112295024096966,
+    "medianAggregationMs": 27.871032007969916
+  },
+  "runs": [
+    {
+      "mode": "local",
+      "cacheState": "fresh",
+      "repetition": 1,
+      "concurrency": 1,
+      "durationMs": 266224.118167,
+      "peakActive": 1,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "local",
+      "cacheState": "warm",
+      "repetition": 1,
+      "concurrency": 1,
+      "durationMs": 265660.82620799995,
+      "peakActive": 1,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "local",
+      "cacheState": "fresh",
+      "repetition": 2,
+      "concurrency": 1,
+      "durationMs": 265514.5237080001,
+      "peakActive": 1,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "local",
+      "cacheState": "warm",
+      "repetition": 2,
+      "concurrency": 1,
+      "durationMs": 266187.121958,
+      "peakActive": 1,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "local",
+      "cacheState": "fresh",
+      "repetition": 3,
+      "concurrency": 1,
+      "durationMs": 266343.1428749999,
+      "peakActive": 1,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "local",
+      "cacheState": "warm",
+      "repetition": 3,
+      "concurrency": 1,
+      "durationMs": 266954.75,
+      "peakActive": 1,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "fresh",
+      "repetition": 1,
+      "concurrency": 1,
+      "durationMs": 262758.698083,
+      "peakActive": 1,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 624371,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "warm",
+      "repetition": 1,
+      "concurrency": 1,
+      "durationMs": 261422.83579200017,
+      "peakActive": 1,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 624371,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "fresh",
+      "repetition": 2,
+      "concurrency": 1,
+      "durationMs": 261338.39554199995,
+      "peakActive": 1,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 624371,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "warm",
+      "repetition": 2,
+      "concurrency": 1,
+      "durationMs": 262652.07758300006,
+      "peakActive": 1,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 624371,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "fresh",
+      "repetition": 3,
+      "concurrency": 1,
+      "durationMs": 262068.2345420001,
+      "peakActive": 1,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 624371,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "warm",
+      "repetition": 3,
+      "concurrency": 1,
+      "durationMs": 260813.14075000025,
+      "peakActive": 1,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 624371,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    },
+    {
+      "mode": "local",
+      "cacheState": "fresh",
+      "repetition": 1,
+      "concurrency": 2,
+      "durationMs": 138923.16912500001,
+      "peakActive": 2,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "local",
+      "cacheState": "warm",
+      "repetition": 1,
+      "concurrency": 2,
+      "durationMs": 140209.10520800017,
+      "peakActive": 2,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "local",
+      "cacheState": "fresh",
+      "repetition": 2,
+      "concurrency": 2,
+      "durationMs": 140331.30316699995,
+      "peakActive": 2,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "local",
+      "cacheState": "warm",
+      "repetition": 2,
+      "concurrency": 2,
+      "durationMs": 140103.6375409998,
+      "peakActive": 2,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "local",
+      "cacheState": "fresh",
+      "repetition": 3,
+      "concurrency": 2,
+      "durationMs": 140720.39437500015,
+      "peakActive": 2,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "local",
+      "cacheState": "warm",
+      "repetition": 3,
+      "concurrency": 2,
+      "durationMs": 139657.7669589999,
+      "peakActive": 2,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "fresh",
+      "repetition": 1,
+      "concurrency": 2,
+      "durationMs": 136627.8254590002,
+      "peakActive": 2,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 624369,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "warm",
+      "repetition": 1,
+      "concurrency": 2,
+      "durationMs": 136085.81295799976,
+      "peakActive": 2,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 624369,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "fresh",
+      "repetition": 2,
+      "concurrency": 2,
+      "durationMs": 136028.02704199962,
+      "peakActive": 2,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 624369,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "warm",
+      "repetition": 2,
+      "concurrency": 2,
+      "durationMs": 135832.4181669997,
+      "peakActive": 2,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 624369,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "fresh",
+      "repetition": 3,
+      "concurrency": 2,
+      "durationMs": 136025.36475000065,
+      "peakActive": 2,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 624369,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "warm",
+      "repetition": 3,
+      "concurrency": 2,
+      "durationMs": 134796.9012090005,
+      "peakActive": 2,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 624369,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    },
+    {
+      "mode": "local",
+      "cacheState": "fresh",
+      "repetition": 1,
+      "concurrency": 4,
+      "durationMs": 75321.15500000026,
+      "peakActive": 4,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "local",
+      "cacheState": "warm",
+      "repetition": 1,
+      "concurrency": 4,
+      "durationMs": 73689.83208400011,
+      "peakActive": 4,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "local",
+      "cacheState": "fresh",
+      "repetition": 2,
+      "concurrency": 4,
+      "durationMs": 75568.76720799971,
+      "peakActive": 4,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "local",
+      "cacheState": "warm",
+      "repetition": 2,
+      "concurrency": 4,
+      "durationMs": 75311.35508400016,
+      "peakActive": 4,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "local",
+      "cacheState": "fresh",
+      "repetition": 3,
+      "concurrency": 4,
+      "durationMs": 74939.86500000022,
+      "peakActive": 4,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "local",
+      "cacheState": "warm",
+      "repetition": 3,
+      "concurrency": 4,
+      "durationMs": 73216.67816699948,
+      "peakActive": 4,
+      "bridgeMessages": 0,
+      "bridgeBytes": 0,
+      "incompleteStories": 50,
+      "classificationSha256": "d5cff3d8eabd8a98909e5782f303d584ca2731ec8ff5b26087ebd0a40eb6f03b"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "fresh",
+      "repetition": 1,
+      "concurrency": 4,
+      "durationMs": 70669.28804199956,
+      "peakActive": 4,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 602951,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "warm",
+      "repetition": 1,
+      "concurrency": 4,
+      "durationMs": 69548.41975000035,
+      "peakActive": 4,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 602951,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "fresh",
+      "repetition": 2,
+      "concurrency": 4,
+      "durationMs": 69450.09016699996,
+      "peakActive": 4,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 602951,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "warm",
+      "repetition": 2,
+      "concurrency": 4,
+      "durationMs": 69489.48591599986,
+      "peakActive": 4,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 602951,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "fresh",
+      "repetition": 3,
+      "concurrency": 4,
+      "durationMs": 70091.14129200019,
+      "peakActive": 4,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 602951,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    },
+    {
+      "mode": "composed",
+      "cacheState": "warm",
+      "repetition": 3,
+      "concurrency": 4,
+      "durationMs": 70572.29254100006,
+      "peakActive": 4,
+      "bridgeMessages": 1004,
+      "bridgeBytes": 602951,
+      "incompleteStories": 50,
+      "classificationSha256": "f903974b37b4efeb4a7a5c9690f994a6514bfe31fef53c84ecbe7a93cbc9728e"
+    }
+  ]
+}

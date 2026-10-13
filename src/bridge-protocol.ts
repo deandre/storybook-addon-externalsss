@@ -6,7 +6,7 @@ export { record } from './validation';
 
 export const BRIDGE_QUERY = 'externalsssBridge';
 export const BRIDGE_NAMESPACE = 'storybook-addon-externalsss/bridge';
-export const BRIDGE_VERSION = 2;
+export const BRIDGE_VERSION = 3;
 export const BRIDGE_PATH = '/externalsss/bridge';
 export const PANEL_ID = 'storybook-addon-externalsss/panel';
 export type BridgeCommand = 'hello' | 'start' | 'retry' | 'cancel';
@@ -92,6 +92,10 @@ function results(value: unknown, ids: Set<string>): value is StoryResult[] {
     new Set(value.map((result) => result.storyId)).size === value.length
   );
 }
+function activeProgress(value: Record<string, unknown>, remaining: number): boolean {
+  return finite(value.active) && Number.isInteger(value.active) &&
+    value.active >= 0 && value.active <= 4 && value.active <= remaining;
+}
 export function isProgress(value: unknown, totalLimit: number): value is ScanProgress {
   if (!record(value) || !finite(value.completed) || !finite(value.total)) return false;
   return (
@@ -100,6 +104,7 @@ export function isProgress(value: unknown, totalLimit: number): value is ScanPro
     value.completed >= 0 &&
     value.completed <= value.total &&
     value.total <= totalLimit &&
+    activeProgress(value, value.total - value.completed) &&
     optionalString(value.current)
   );
 }
