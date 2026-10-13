@@ -15,6 +15,14 @@ When a scan finishes or stops, choose **Download JSON** to save the report. It i
 
 Choose **Retry incomplete** to revisit only stories whose observations did not complete, including stories not reached before cancellation. Completed observations stay in the report. Retries keep the original globals and preview settings; **Scan again** starts a new catalog scan with your current settings.
 
+## Storybook testing controls
+
+In Storybook development, Externalsss also appears in the testing controls. Choose **Run scan**, or use Storybook’s **Run tests** action, to scan the local catalog without opening the panel. Both entry points share progress and results. **View results**, or selecting an Externalsss story status, opens the panel’s local results.
+
+Story statuses report errors for broken resources and render errors; warnings for resources needing review or incomplete observations; and success only for complete observations with no findings or diagnostic warnings. Success means no findings in the scan window. Cancelled and unvisited stories remain unknown. A completed run can contain story errors; a crashed provider means the scanner itself could not execute.
+
+**Cancel** preserves partial results, and **Retry incomplete** retains completed observations. Storybook’s Clear control discards the local scan and its statuses after execution stops. The integration uses Storybook’s experimental Test Provider API automatically when available. Composed catalogs continue to use the panel and do not publish statuses into the host’s local catalog. Deployed static Storybooks retain panel scanning.
+
 ## Try the demo
 
 Use Node.js 24.12 or newer. This checkout uses pnpm 10.22.

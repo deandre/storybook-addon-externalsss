@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import { testProviderCheck } from './test-provider-check.mjs';
 
 const base = process.env.EXTERNALSSS_STORYBOOK_URL ?? 'http://127.0.0.1:6100/';
 const fullOnly = process.env.EXTERNALSSS_TEST_MODE === 'full';
@@ -12,7 +13,7 @@ async function openPanel(page) {
 }
 
 async function waitForScan(page, phrase) {
-  await page.getByRole('status').filter({ hasText: phrase }).waitFor({ timeout: 90000 });
+  await page.locator('.externalsss').getByRole('status').filter({ hasText: phrase }).waitFor({ timeout: 90000 });
 }
 
 async function fullScan() {
@@ -29,7 +30,7 @@ async function fullScan() {
       }
     });
   });
-  await page.getByRole('button', { name: 'Run scan' }).click();
+  await page.locator('.externalsss').getByRole('button', { name: 'Run scan' }).click();
   await waitForScan(page, 'Scan finished with gaps');
   assert.equal(page.url(), initialUrl, 'the manager URL changed during the background scan');
   assert.equal(await page.locator('iframe[title="storybook-preview-iframe"]').getAttribute('src'), initialCanvas, 'the visible Canvas changed');
@@ -80,12 +81,12 @@ async function cancelledScan() {
   const page = await browser.newPage();
   await openPanel(page);
   const initialUrl = page.url();
-  await page.getByRole('button', { name: 'Run scan' }).click();
+  await page.locator('.externalsss').getByRole('button', { name: 'Run scan' }).click();
   await page.waitForFunction(() => Number(document.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')) >= 1, null, { timeout: 15000 });
-  await page.getByRole('button', { name: 'Cancel' }).click();
+  await page.locator('.externalsss').getByRole('button', { name: 'Cancel' }).click();
   await waitForScan(page, 'Scan cancelled');
   assert.equal(page.url(), initialUrl);
-  assert.match(await page.getByRole('status').innerText(), /[1-9] of 10 stories checked\. Results are partial/);
+  assert.match(await page.locator('.externalsss').getByRole('status').innerText(), /[1-9] of 10 stories checked\. Results are partial/);
   assert.match(await page.locator('[aria-label="Incomplete stories"]').innerText(), /stories not scanned/);
   const partialDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download JSON' }).click();
@@ -93,7 +94,7 @@ async function cancelledScan() {
   assert.equal(partial.scanStatus, 'cancelled');
   assert(partial.stories.some((story) => story.status === 'not-scanned'));
   assert(partial.summary.incompleteStories > 0);
-  await page.getByRole('button', { name: 'Retry incomplete' }).click();
+  await page.locator('.externalsss').getByRole('button', { name: 'Retry incomplete' }).click();
   await waitForScan(page, 'Scan finished with gaps');
   const mergedDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download JSON' }).click();
@@ -129,7 +130,7 @@ async function delayedStylesheetScan() {
     });
   });
   await openPanel(page);
-  await page.getByRole('button', { name: 'Run scan' }).click();
+  await page.locator('.externalsss').getByRole('button', { name: 'Run scan' }).click();
   await waitForScan(page, 'Scan finished with gaps');
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download JSON' }).click();
@@ -155,7 +156,7 @@ async function timedOutScan() {
     }
   });
   await openPanel(page);
-  await page.getByRole('button', { name: 'Run scan' }).click();
+  await page.locator('.externalsss').getByRole('button', { name: 'Run scan' }).click();
   await waitForScan(page, 'Scan finished with gaps');
   const incompleteText = await page.locator('[aria-label="Incomplete stories"]').innerText();
   assert.match(incompleteText, /Clean Image/);
@@ -183,7 +184,7 @@ async function malformedResultScan() {
     }
   });
   await openPanel(page);
-  await page.getByRole('button', { name: 'Run scan' }).click();
+  await page.locator('.externalsss').getByRole('button', { name: 'Run scan' }).click();
   await waitForScan(page, 'Scan finished with gaps');
   const incompleteText = await page.locator('[aria-label="Incomplete stories"]').innerText();
   assert.match(incompleteText, /Clean Image/);
@@ -228,7 +229,7 @@ async function retryScan() {
     await page.getByRole('button', { name: 'Download JSON' }).click();
     return JSON.parse(await readFile(await (await event).path(), 'utf8'));
   };
-  await page.getByRole('button', { name: 'Run scan' }).click();
+  await page.locator('.externalsss').getByRole('button', { name: 'Run scan' }).click();
   await waitForScan(page, 'Scan finished with gaps');
   await page.locator('.externalsss').evaluate((panel) => { panel.style.width = '320px'; });
   assert(await page.locator('.externalsss').evaluate((panel) => {
@@ -262,13 +263,13 @@ async function retryScan() {
     window.PREVIEW_URL = '/changed-preview.html?custom=changed';
     history.replaceState(null, '', location.href.replace('theme:dark', 'theme:light').replace('custom=original', 'custom=changed'));
   });
-  await page.getByRole('button', { name: 'Retry incomplete' }).click();
+  await page.locator('.externalsss').getByRole('button', { name: 'Retry incomplete' }).click();
   await waitForScan(page, 'Scan stopped');
   assert.deepEqual((await download()).stories, original.stories);
 
   attempt = 1;
   let start = requests.length;
-  await page.getByRole('button', { name: 'Retry incomplete' }).click();
+  await page.locator('.externalsss').getByRole('button', { name: 'Retry incomplete' }).click();
   await waitForScan(page, 'Retrying 1 of 2');
   assert.equal(await page.getByRole('progressbar').getAttribute('aria-valuemax'), '2');
   assert.equal(await page.getByRole('progressbar').getAttribute('aria-valuenow'), '0');
@@ -286,9 +287,9 @@ async function retryScan() {
   assert.deepEqual(partial.stories.filter((story) => retained.some(({ id }) => id === story.id)), retained);
 
   attempt = 2;
-  await page.getByRole('button', { name: 'Retry incomplete' }).click();
+  await page.locator('.externalsss').getByRole('button', { name: 'Retry incomplete' }).click();
   await waitForScan(page, 'Retrying 1 of 1');
-  await page.getByRole('button', { name: 'Cancel' }).click();
+  await page.locator('.externalsss').getByRole('button', { name: 'Cancel' }).click();
   await waitForScan(page, 'Scan cancelled');
   const cancelled = await download();
   assert.equal(cancelled.stories.find(({ id }) => id === failing).status, 'cancelled');
@@ -296,13 +297,13 @@ async function retryScan() {
 
   attempt = 3;
   start = requests.length;
-  await page.getByRole('button', { name: 'Retry incomplete' }).click();
+  await page.locator('.externalsss').getByRole('button', { name: 'Retry incomplete' }).click();
   await waitForScan(page, 'Scan complete');
   assert.deepEqual(requests.slice(start).map((url) => url.searchParams.get('externalsssStory')), [failing]);
   const recovered = await download();
   assert.equal(recovered.summary.completeStories, 10);
   assert.equal(recovered.summary.incompleteStories, 0);
-  assert.equal(await page.getByRole('button', { name: 'Retry incomplete' }).count(), 0);
+  assert.equal(await page.locator('.externalsss').getByRole('button', { name: 'Retry incomplete' }).count(), 0);
   assert.equal(await page.locator('#storybook-preview-iframe').getAttribute('src'), canvas);
   assert.equal(page.url(), managerUrl.replace('theme:dark', 'theme:light').replace('custom=original', 'custom=changed'));
   await page.close();
@@ -310,6 +311,7 @@ async function retryScan() {
 }
 
 try {
+  if (!fullOnly) await testProviderCheck(browser, base, 'externalsss-demo-resources--clean-image');
   await fullScan();
   if (!fullOnly) {
     await cancelledScan();

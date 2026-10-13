@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { testProviderCheck } from './test-provider-check.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const work = await mkdtemp(join(tmpdir(), 'externalsss-compat-'));
@@ -86,10 +87,10 @@ async function smoke(browser, base, customPreview, reactHost) {
     const initialUrl = page.url();
     const initialCanvas = await page.locator('#storybook-preview-iframe').getAttribute('src');
     if (customPreview) await page.evaluate((url) => { window.PREVIEW_URL = url; }, customPreview);
-    await page.getByRole('button', { name: 'Run scan' }).click();
+    await page.locator('.externalsss').getByRole('button', { name: 'Run scan' }).click();
     await page.waitForSelector('iframe[title^="Externalsss background scan"]');
-    await page.getByRole('button', { name: 'Cancel' }).click();
-    await page.getByRole('status').filter({ hasText: 'Scan cancelled' }).waitFor();
+    await page.locator('.externalsss').getByRole('button', { name: 'Cancel' }).click();
+    await page.locator('.externalsss').getByRole('status').filter({ hasText: 'Scan cancelled' }).waitFor();
     let download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download JSON' }).click();
     const partial = JSON.parse(await readFile(await (await download).path(), 'utf8'));
@@ -107,8 +108,8 @@ async function smoke(browser, base, customPreview, reactHost) {
     const retryCanvas = await page.locator('#storybook-preview-iframe').getAttribute('src');
     await page.evaluate(() => { window.PREVIEW_URL = '/unused-preview.html?custom=changed'; });
     scanUrls.length = 0;
-    await page.getByRole('button', { name: 'Retry incomplete' }).click();
-    await page.getByRole('status').filter({ hasText: 'Scan complete' }).waitFor({ timeout: 60000 });
+    await page.locator('.externalsss').getByRole('button', { name: 'Retry incomplete' }).click();
+    await page.locator('.externalsss').getByRole('status').filter({ hasText: 'Scan complete' }).waitFor({ timeout: 60000 });
     download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download JSON' }).click();
     const report = JSON.parse(await readFile(await (await download).path(), 'utf8'));
@@ -216,17 +217,17 @@ async function composedScan(browser, source, composedDirectory) {
     await page.getByRole('combobox', { name: 'Catalog' }).selectOption('remote');
     const canvas = await page.locator('#storybook-preview-iframe').getAttribute('src');
     const managerUrl = page.url();
-    await page.getByRole('button', { name: 'Run scan' }).click();
+    await page.locator('.externalsss').getByRole('button', { name: 'Run scan' }).click();
     await page.waitForSelector('iframe[title^="Externalsss remote scan"]');
-    await page.getByRole('button', { name: 'Cancel' }).click();
-    await page.getByRole('status').filter({ hasText: 'Scan cancelled' }).waitFor({ timeout: 35000 });
+    await page.locator('.externalsss').getByRole('button', { name: 'Cancel' }).click();
+    await page.locator('.externalsss').getByRole('status').filter({ hasText: 'Scan cancelled' }).waitFor({ timeout: 35000 });
     // Cancellation during connection tears down the bridge. Starting again
     // must establish a fresh connection, then retain it for later retries.
-    await page.getByRole('button', { name: 'Scan again' }).click();
-    await page.getByRole('status').filter({ hasText: 'Scanning 1 of 3' }).waitFor({ timeout: 35000 });
+    await page.locator('.externalsss').getByRole('button', { name: 'Scan again' }).click();
+    await page.locator('.externalsss').getByRole('status').filter({ hasText: 'Scanning 1 of 3' }).waitFor({ timeout: 35000 });
     assert(await page.getByRole('combobox', { name: 'Catalog' }).isDisabled());
-    await page.getByRole('button', { name: 'Cancel' }).click();
-    await page.getByRole('status').filter({ hasText: 'Scan cancelled' }).waitFor();
+    await page.locator('.externalsss').getByRole('button', { name: 'Cancel' }).click();
+    await page.locator('.externalsss').getByRole('status').filter({ hasText: 'Scan cancelled' }).waitFor();
     const partial = await download();
     assert.equal(partial.summary.totalStories, 3);
     assert.equal(partial.catalog.refId, 'remote');
@@ -234,8 +235,8 @@ async function composedScan(browser, source, composedDirectory) {
     assert.equal(partial.catalog.url, configured.origin + configured.pathname);
     assert(partial.stories.some((story) => story.status !== 'complete'));
     scanUrls.length = 0;
-    await page.getByRole('button', { name: 'Retry incomplete' }).click();
-    await page.getByRole('status').filter({ hasText: 'Scan complete' }).waitFor({ timeout: 35000 });
+    await page.locator('.externalsss').getByRole('button', { name: 'Retry incomplete' }).click();
+    await page.locator('.externalsss').getByRole('status').filter({ hasText: 'Scan complete' }).waitFor({ timeout: 35000 });
     const report = await download();
     assert.equal(report.summary.completeStories, 3);
     assert(report.stories.every((story) => story.id.startsWith('compatibility--')));
@@ -306,7 +307,7 @@ export const Third = {};
     const child = spawn(process.execPath, [storybookBin, 'dev', '-p', new URL(origin).port, '--ci', '--no-open'], {
       cwd: directory, stdio: 'inherit', env: { ...process.env, STORYBOOK_DISABLE_TELEMETRY: '1' },
     });
-    try { await waitForServer(origin, child); await smoke(browser, `${origin}/`, undefined, Boolean(fixture.react)); await composedScan(browser, `${origin}/`); }
+    try { await waitForServer(origin, child); await testProviderCheck(browser, `${origin}/`, 'compatibility--first'); await smoke(browser, `${origin}/`, undefined, Boolean(fixture.react)); await composedScan(browser, `${origin}/`); }
     finally {
       child.kill('SIGTERM');
       if (child.exitCode === null) await new Promise((resolve) => child.once('exit', resolve));
