@@ -1,15 +1,17 @@
-import React, { useMemo, useState } from 'react';
-import { addons, types, useStorybookState, type API } from 'storybook/manager-api';
+import React, { useEffect, useMemo, useState } from 'react';
+import { addons, types, useAddonState, useStorybookState, type API } from 'storybook/manager-api';
 import { AddonPanel } from 'storybook/internal/components';
 import { useTheme, type StorybookTheme } from 'storybook/theming';
 import type { FindingLabel, StoryResult } from './model';
 import { panelStyles } from './panel-styles';
 import { buildReport, summarizeScan } from './report';
-import { useCatalogScan } from './use-catalog-scan';
+import { getCatalogScanController, useCatalogScan } from './use-catalog-scan';
 import { useRemoteScan, type Catalog } from './use-remote-scan';
 import { getComposedCatalogs } from './storybook-compat';
 import { RemoteBridge } from './remote-bridge';
 import { BRIDGE_QUERY, BRIDGE_PATH, PANEL_ID } from './bridge-protocol';
+
+import { registerTestProvider } from './test-provider';
 
 const ADDON_ID = 'storybook-addon-externalsss';
 
@@ -78,6 +80,8 @@ function ExternalsssPanel({ api, active }: { api: API; active: boolean }) {
   const remote = useRemoteScan(catalog);
   const { session, run, retry, cancel } = refId ? remote : local;
   const [filter, setFilter] = useState<Filter>('all');
+  const [request] = useAddonState<number>(`${ADDON_ID}/results-request`, 0);
+  useEffect(() => { if (request) { setRefId(''); setFilter('all'); } }, [request]);
   const targets = session.phase === 'idle' ? [] : session.targets;
   const results = session.phase === 'idle' ? [] : session.results;
   const running = session.phase === 'running';
@@ -234,6 +238,11 @@ addons.register(ADDON_ID, (api) => {
       render: () => <RemoteBridge api={api} bridgeId={bridgeId} /> });
     queueMicrotask(() => api.setSelectedPanel(PANEL_ID));
   }
+  if (!bridgeId) registerTestProvider(api, getCatalogScanController(api).controller, () => {
+    void api.setAddonState<number>(`${ADDON_ID}/results-request`, (previous = 0) => previous + 1);
+    api.setSelectedPanel(PANEL_ID);
+    api.togglePanel(true);
+  });
   addons.add(PANEL_ID, {
     type: types.PANEL,
     title: 'Externalsss',
