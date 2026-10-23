@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0](https://github.com/deandre/storybook-addon-externalsss/compare/v0.2.0...v0.3.0) (2026-10-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* require node 24.22.1 for development and releases ([#17](https://github.com/deandre/storybook-addon-externalsss/issues/17))
+
+### Build System
+
+* require node 24.22.1 for development and releases ([#17](https://github.com/deandre/storybook-addon-externalsss/issues/17)) ([26652ad](https://github.com/deandre/storybook-addon-externalsss/commit/26652ada8942166814bf12c5b29db6fd061dc6a9))
+
 ## [0.2.0](https://github.com/deandre/storybook-addon-externalsss/compare/v0.1.4...v0.2.0) (2026-10-13)
 
 
