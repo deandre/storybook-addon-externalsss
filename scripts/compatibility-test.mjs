@@ -35,7 +35,7 @@ assert.match(manager, /React\.createElement/);
 const metadata = JSON.parse(execFileSync('tar', ['-xOf', tarball, 'package/package.json'], { encoding: 'utf8' }));
 assert.equal(metadata.peerDependencies.react, undefined);
 assert.equal(metadata.peerDependencies.storybook, '^9.0.0 || ^10.0.0');
-assert.equal(metadata.engines.node, '>=24.22.1 <25');
+assert.equal(metadata.engines.node, '>=26.13.0 <27');
 console.log('PASS packed manager uses external React without JSX runtime or React peer');
 
 async function listen(server, port = 0) {

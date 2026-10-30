@@ -25,7 +25,8 @@ Story statuses report errors for broken resources and render errors; warnings fo
 
 ## Try the demo
 
-Use Node.js 24.12 or newer. This checkout uses pnpm 10.22.
+Use Node.js 26.13.0 or newer within Node 26 and pnpm 12.16.1. The checkout pins
+these versions in `.nvmrc` and `package.json`.
 
 ```sh
 pnpm install
