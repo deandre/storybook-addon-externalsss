@@ -11,6 +11,8 @@ assert([1, 2, 4].includes(concurrency));
 const originalNewPage = browser.newPage.bind(browser);
 browser.newPage = async (...args) => {
   const page = await originalNewPage(...args);
+  // Fulfilled manager HTML needs permission to reach Storybook's loopback WebSocket in Chromium 148.
+  await page.context().grantPermissions(['local-network-access'], { origin: new URL(base).origin });
   await page.route('**/*', async (route) => {
     const url = new URL(route.request().url());
     if (!route.request().isNavigationRequest() || (!url.pathname.endsWith('/') && !url.pathname.endsWith('/index.html'))) { await route.continue(); return; }

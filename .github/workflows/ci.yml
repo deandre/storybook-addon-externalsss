@@ -10,11 +10,10 @@ jobs:
   checks:
     name: Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
-        with:
-          version: 10.22.0
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
@@ -25,13 +24,16 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: pnpm build-storybook
-      - run: pnpm exec playwright install --with-deps chromium
+      - name: Install Chromium
+        timeout-minutes: 15
+        run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:browser:ci
       - run: pnpm test:composition
 
   compatibility:
     name: Compatibility (${{ matrix.fixture }})
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -45,14 +47,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
-        with:
-          version: 10.22.0
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           package-manager-cache: false
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      - name: Install Chromium
+        timeout-minutes: 15
+        run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:compatibility
         env:
           EXTERNALSSS_COMPAT_CASE: ${{ matrix.fixture }}
