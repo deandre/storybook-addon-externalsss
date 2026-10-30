@@ -1,0 +1,29 @@
+README.md
+  s_313097de50193b::t_56f34a34abfcf1 28-29
+.nvmrc
+  s_313097de50193b::t_56f34a34abfcf1 1
+pnpm-workspace.yaml
+  s_313097de50193b::t_7b4db0c458bb99 1-2
+package.json
+  s_313097de50193b::t_56f34a34abfcf1 19-20,74
+scripts/compatibility-test.mjs
+  s_313097de50193b::t_56f34a34abfcf1 38
+pnpm-lock.yaml
+  s_313097de50193b::t_4c78efccc98936 1-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3cbefda449ad5b185b51c0f97f07c3978aeb05fe",
+  "prompts": {},
+  "sessions": {
+    "s_313097de50193b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1681a-a008-7502-b4ec-617fcaae3e58",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "DeAndre Harris <8107071+deandre@users.noreply.github.com>"
+    }
+  }
+}
