@@ -1,0 +1,23 @@
+.github/workflows/ci.yml
+  s_313097de50193b::t_4c1b292b3e06d5 13,27-29,36,55-57
+package.json
+  s_313097de50193b::t_16b7c9a0ab4a97 59
+pnpm-lock.yaml
+  s_313097de50193b::t_49023c693f08e2 194-195,1858-1859,1863-1864,3739,3741,3743
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f6ef5b85c4bd6616a2a4dfd8d284c4693006171e",
+  "prompts": {},
+  "sessions": {
+    "s_313097de50193b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1681a-a008-7502-b4ec-617fcaae3e58",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "DeAndre Harris <8107071+deandre@users.noreply.github.com>"
+    }
+  }
+}
