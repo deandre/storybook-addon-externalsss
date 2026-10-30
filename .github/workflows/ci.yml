@@ -58,3 +58,5 @@ jobs:
       - run: pnpm test:compatibility
         env:
           EXTERNALSSS_COMPAT_CASE: ${{ matrix.fixture }}
+          # The Ubuntu runner uses glibc; make npm's native dependency selection explicit.
+          npm_config_libc: glibc
