@@ -38,7 +38,7 @@ Open Storybook, select a demo story, and open **Externalsss**. The demo has loca
 
 ## Install in another Storybook
 
-In a Storybook 9 or 10 project using Node.js 20.19 or newer, install the addon with npm:
+In a Storybook 9 or 10 project using Node.js 26.13.0 or newer within Node 26, install the addon with npm:
 
 ```sh
 npm install -D storybook-addon-externalsss
