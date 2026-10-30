@@ -1,0 +1,19 @@
+scripts/browser-test.mjs
+  s_313097de50193b::t_a51132b7d28673 14-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ee7bbfee513cf54447798cd4595fa651fe22b17c",
+  "prompts": {},
+  "sessions": {
+    "s_313097de50193b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1681a-a008-7502-b4ec-617fcaae3e58",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "DeAndre Harris <8107071+deandre@users.noreply.github.com>"
+    }
+  }
+}
